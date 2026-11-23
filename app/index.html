@@ -21,7 +21,7 @@
     <span class="sub">Kitewind Darß · Zingst · Bodden</span>
   </div>
   <div class="controls">
-    <label class="sel" for="modelSel">Modell
+    <label class="sel" for="modelSel">Vergleich
       <select id="modelSel">
         <option value="icon">ICON (DWD)</option>
         <option value="gfs">GFS</option>
@@ -54,7 +54,7 @@
       </div>
     </div>
     <div class="weekwrap"><table class="week" id="week"></table></div>
-    <p class="hint">Zahl = längste Zeit am Stück in Stunden, bei Tageslicht, ab der gewählten Schwelle und aus passender Richtung. Grün ab 2 h, dunkelgrün ab 4 h. Wochenende umrandet. Antippen für Details.</p>
+    <p class="hint" id="weekHint"></p>
   </section>
 
   <section class="panel" id="detail" aria-live="polite"></section>
@@ -62,7 +62,7 @@
   <section class="panel" id="stations" aria-labelledby="stH"></section>
 
   <section class="notes">
-    <p>Vorhersage: ICON, GFS und ECMWF über Open-Meteo (unkorrigiert). „Lokal korrigiert“ erscheint, sobald das trainierte Modell unter <code>model/</code> liegt.</p>
+    <p>Vorhersage: ICON, GFS und ECMWF über Open-Meteo. „Lokal“: XGBoost-Korrektur, trainiert auf früheren Modellläufen 2024–2025 gegen die DWD-Messungen Darßer Ort (Ostsee-Spots) und Barth (Bodden-Spots); läuft vollständig auf deinem Gerät.</p>
     <p>Messwerte: DWD über Bright Sky, DMI Open Data (CC BY 4.0). Darßer Schwelle: IOW/BSH MARNET. Karte: © OpenStreetMap-Mitwirkende, OpenFreeMap. Satellit: Sentinel-2 cloudless von EOX IT Services GmbH (enthält modifizierte Copernicus-Sentinel-Daten 2020).</p>
     <p>Im Nationalpark Vorpommersche Boddenlandschaft ist Kiten nur in ausgewiesenen Zonen erlaubt.</p>
   </section>
@@ -70,6 +70,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="spots.js"></script>
+<script src="model.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

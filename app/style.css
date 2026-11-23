@@ -120,3 +120,45 @@ main { max-width: 1000px; margin: 0 auto; padding: 12px 16px 32px; display: grid
 .notes p { margin: 0; max-width: 75ch; }
 code { font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Wochenzelle: lokal groß, Wahrscheinlichkeit und Rohmodell klein */
+.cell { line-height: 1.1; }
+.cell .pd { display: block; font-size: 10px; font-weight: 500; opacity: .85; }
+.cell .sub { display: block; font-size: 9px; font-weight: 400; opacity: .75; }
+.cell.rare { cursor: default; }
+/* Detail-Raster: 3 Modelle + lokal */
+.grid { display: grid; gap: 3px; }
+.grow { display: grid; grid-template-columns: 48px 1fr 42px; gap: 6px; align-items: center; }
+.glab { font-size: 11px; color: var(--muted); text-align: right; }
+.grow.loc .glab { color: var(--ink); font-weight: 700; }
+.grow.loc .strip { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: 3px; }
+.grun { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.grow .strip { height: 16px; }
+.ghead .hrs { display: flex; gap: 1px; font-size: 9px; color: var(--muted); }
+.ghead .hrs span { flex: 1; }
+.p1 { background: #d9ecd9; } .p2 { background: #9fd3a8; } .p3 { background: #4fb36f; } .p4 { background: #1f7a43; }
+@media (prefers-color-scheme: dark) { .p1 { background: #24402c; } .p2 { background: #2f6b40; } .p3 { background: #3f9a5d; } .p4 { background: #5fcf86; } }
+
+/* Windfinder-artige Stundentabelle */
+.fday { display: grid; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.fday.we .day-h > b { color: var(--accent); }
+.ftable-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ftable { border-collapse: separate; border-spacing: 2px 2px; font-variant-numeric: tabular-nums; font-size: 13px; }
+.ftable th { position: sticky; left: 0; background: var(--card); z-index: 1; text-align: right; font-weight: 500;
+  font-size: 11px; color: var(--muted); padding: 0 6px 0 0; white-space: nowrap; }
+.ftable td { min-width: 30px; height: 26px; text-align: center; border-radius: 4px; padding: 0 2px; }
+.ftable .hrow td { color: var(--muted); font-size: 11px; height: 18px; }
+.ftable .drow td { height: 24px; }
+.ftable .drow .arrow { width: 18px; height: 18px; color: var(--ink); }
+.ftable .mrow td { font-weight: 600; color: #15232a; }
+.ftable .grow2 td { color: var(--muted); font-size: 12px; height: 20px; }
+.ftable .lrow th { color: var(--ink); font-weight: 700; }
+.ftable .lrow td { font-weight: 700; color: #102018; outline: 1px solid rgba(0,0,0,.08); }
+.ftable .lrow .p4 { color: #fff; }
+.ftable .wrow td, .ftable .trow td { height: 20px; font-size: 12px; color: var(--muted); }
+.ftable td.off { opacity: .35; }
+.kx { background: transparent; color: var(--muted) !important; }
+.k0 { background: #eef3f7; } .k1 { background: #cfe6f5; } .k2 { background: #9fd9e4; } .k3 { background: #8fd48a; }
+.k4 { background: #c9df52; } .k5 { background: #f4d23f; } .k6 { background: #f3a141; } .k7 { background: #e8644a; color: #fff !important; }
+.k8 { background: #b5306f; color: #fff !important; }
+.p0 { background: #eef3ef; color: #7a8a80 !important; }

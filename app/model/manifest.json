@@ -1,0 +1,93 @@
+{
+ "version": 1,
+ "hourly_features": [
+  "icon_ws10",
+  "icon_gust",
+  "icon_u",
+  "icon_v",
+  "gfs_ws10",
+  "gfs_gust",
+  "gfs_u",
+  "gfs_v",
+  "ecmwf_ws10",
+  "ecmwf_gust",
+  "ecmwf_u",
+  "ecmwf_v",
+  "icon_ws80",
+  "gfs_ws80",
+  "models_mean_ws10",
+  "models_max_ws10",
+  "models_spread_ws10",
+  "dir_sin",
+  "dir_cos",
+  "sst",
+  "t2m_minus_sst",
+  "land_sea_dT",
+  "dp_north_south",
+  "swrad",
+  "cloud",
+  "cape",
+  "precip",
+  "hour_sin",
+  "hour_cos",
+  "doy_sin",
+  "doy_cos",
+  "lead_day"
+ ],
+ "daily_features": [
+  "icon_max",
+  "icon_mean",
+  "mean3_max",
+  "mean3_mean",
+  "max3_max",
+  "spread_mean",
+  "gust_max",
+  "u_mean",
+  "v_mean",
+  "t2m_sst",
+  "land_sea",
+  "swrad",
+  "cloud",
+  "dp",
+  "doy_sin",
+  "doy_cos",
+  "p_hours",
+  "p_mean",
+  "p_run",
+  "icon_run",
+  "lead_day"
+ ],
+ "sites": {
+  "darss_ort": {
+   "hourly": {
+    "12": "hourly_darss_ort_12.json",
+    "15": "hourly_darss_ort_15.json",
+    "20": "hourly_darss_ort_20.json"
+   },
+   "daily": {
+    "12": "daily_darss_ort_12.json",
+    "15": "daily_darss_ort_15.json",
+    "20": "daily_darss_ort_20.json"
+   }
+  },
+  "barth": {
+   "hourly": {
+    "12": "hourly_barth_12.json",
+    "15": "hourly_barth_15.json",
+    "20": "hourly_barth_20.json"
+   },
+   "daily": {
+    "12": "daily_barth_12.json",
+    "15": "daily_barth_15.json",
+    "20": "daily_barth_20.json"
+   }
+  }
+ },
+ "thresholds": [
+  12,
+  15,
+  20
+ ],
+ "min_run": 2,
+ "note": "Trainiert auf Open-Meteo Previous Runs 2024-2025 gegen DWD Dar\u00dfer Ort / Barth"
+}
