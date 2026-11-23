@@ -19,7 +19,7 @@ DATA, DWD, RES, MODELS = sys.argv[1:5]
 SITES = ("darss_ort", "barth")
 LEADS = range(1, 8)
 YEARS = (2024, 2025)
-THRS = (12, 15)
+THRS = (12, 15, 20)
 MIN_RUN = 2           # Stunden am Stück für „kitebar“
 MOD = {"icon_seamless": "icon", "gfs_seamless": "gfs", "ecmwf_ifs025": "ecmwf"}
 HOURLY_PARAMS = dict(n_estimators=400, max_depth=5, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
@@ -66,25 +66,35 @@ def features(site, lead, raw_site, raw_barth, raw_sea, sst_site, sst_sea):
         X[f"{m}_gust"] = f.get(f"{m}_wind_gusts_10m")
         X[f"{m}_u"] = -ws * np.sin(np.deg2rad(wd))
         X[f"{m}_v"] = -ws * np.cos(np.deg2rad(wd))
+    def fb(var):   # ICON, ersatzweise GFS/ECMWF (ICON reicht nur ~6,5 Tage)
+        out = f.get(f"icon_{var}")
+        for m in ("gfs", "ecmwf"):
+            alt = f.get(f"{m}_{var}")
+            if alt is not None:
+                out = alt if out is None else out.fillna(alt)
+        return out
     X["icon_ws80"] = f.get("icon_wind_speed_80m")
     X["gfs_ws80"] = f.get("gfs_wind_speed_80m")
     ws = X[[c for c in ("icon_ws10", "gfs_ws10", "ecmwf_ws10") if c in X]]
     X["models_mean_ws10"] = ws.mean(axis=1)
     X["models_max_ws10"] = ws.max(axis=1)
     X["models_spread_ws10"] = ws.std(axis=1)
-    rad = np.deg2rad(f["icon_wind_direction_10m"])
-    X["dir_sin"], X["dir_cos"] = np.sin(rad), np.cos(rad)
+    u = X[[c for c in ("icon_u", "gfs_u", "ecmwf_u") if c in X]].mean(axis=1)
+    v = X[[c for c in ("icon_v", "gfs_v", "ecmwf_v") if c in X]].mean(axis=1)
+    ang = np.arctan2(-u, -v)          # Herkunftsrichtung der mittleren Strömung
+    X["dir_sin"], X["dir_cos"] = np.sin(ang), np.cos(ang)
+    X["dwd_ws10"] = X["icon_ws10"].fillna(X.get("gfs_ws10"))   # Referenz „DWD-Modell“ (Tag 7: GFS)
     # Wassertemperatur: Wert zum Ausgabezeitpunkt (Persistenz), kein Blick in die Zukunft
     sst_issue = sst_site.shift(freq=pd.Timedelta(days=lead)).reindex(X.index)
     sea_issue = sst_sea.shift(freq=pd.Timedelta(days=lead)).reindex(X.index)
     X["sst"] = sst_issue
-    X["t2m_minus_sst"] = f["icon_temperature_2m"] - sst_issue
-    X["land_sea_dT"] = b["icon_temperature_2m"] - sea_issue
-    X["dp_north_south"] = s["icon_pressure_msl"] - b["icon_pressure_msl"]
-    X["swrad"] = f["icon_shortwave_radiation"]
-    X["cloud"] = f["icon_cloud_cover"]
-    X["cape"] = f["icon_cape"]
-    X["precip"] = f["icon_precipitation"]
+    X["t2m_minus_sst"] = fb("temperature_2m") - sst_issue
+    X["land_sea_dT"] = b["icon_temperature_2m"].fillna(b["gfs_temperature_2m"]) - sea_issue
+    X["dp_north_south"] = s["icon_pressure_msl"].fillna(s["gfs_pressure_msl"]) - b["icon_pressure_msl"].fillna(b["gfs_pressure_msl"])
+    X["swrad"] = fb("shortwave_radiation")
+    X["cloud"] = fb("cloud_cover")
+    X["cape"] = fb("cape")
+    X["precip"] = fb("precipitation")
     loc = X.index.tz_convert("Europe/Berlin")
     hour = loc.hour
     X["hour_sin"], X["hour_cos"] = np.sin(2 * np.pi * hour / 24), np.cos(2 * np.pi * hour / 24)
@@ -108,15 +118,15 @@ def daily_table(H, thr, p_col):
     """Tageswerte aus Stundenwerten (nur Tageslicht)."""
     D = H[H.daylight].groupby(["local_date", "lead_day"])
     agg = D.agg(year=("year", "first"),
-                icon_max=("icon_ws10", "max"), icon_mean=("icon_ws10", "mean"),
+                icon_max=("dwd_ws10", "max"), icon_mean=("dwd_ws10", "mean"),
                 mean3_max=("models_mean_ws10", "max"), mean3_mean=("models_mean_ws10", "mean"),
                 max3_max=("models_max_ws10", "max"), spread_mean=("models_spread_ws10", "mean"),
-                gust_max=("icon_gust", "max"), u_mean=("icon_u", "mean"), v_mean=("icon_v", "mean"),
+                gust_max=("gfs_gust", "max"), u_mean=("gfs_u", "mean"), v_mean=("gfs_v", "mean"),
                 t2m_sst=("t2m_minus_sst", "mean"), land_sea=("land_sea_dT", "max"),
                 swrad=("swrad", "mean"), cloud=("cloud", "mean"), dp=("dp_north_south", "mean"),
-                doy_sin=("doy_sin", "first"), doy_cos=("doy_cos", "first"), n=("icon_ws10", "size"),
+                doy_sin=("doy_sin", "first"), doy_cos=("doy_cos", "first"), n=("dwd_ws10", "size"),
                 p_hours=(p_col, lambda s: float((s >= 0.5).sum())), p_mean=(p_col, "mean"))
-    agg["icon_run"] = D.apply(lambda g: longest_run(g.sort_index().icon_ws10 >= thr))
+    agg["icon_run"] = D.apply(lambda g: longest_run(g.sort_index().dwd_ws10 >= thr))
     agg["p_run"] = D.apply(lambda g: longest_run(g.sort_index()[p_col] >= 0.5))
     agg["obs_run"] = D.apply(lambda g: longest_run(g.sort_index().obs_kn >= thr))
     agg["y"] = (agg.obs_run >= MIN_RUN).astype(int)
@@ -137,9 +147,9 @@ def main():
         H = pd.concat([features(site, d, raw[site], raw["barth"], raw["darss_schwelle"], sst[site], sst["darss_schwelle"])
                        for d in LEADS])
         H["obs_kn"] = obs.reindex(H.index).values
-        H = H.dropna(subset=["obs_kn", "icon_ws10"])
+        H = H.dropna(subset=["obs_kn", "models_mean_ws10"])
         H = H[H.year.isin(YEARS)]
-        feats = [c for c in H.columns if c not in ("obs_kn", "local_date", "year", "daylight")]
+        feats = [c for c in H.columns if c not in ("obs_kn", "local_date", "year", "daylight", "dwd_ws10")]
         for thr in THRS:
             # --- stündlich, Kreuzvalidierung über Jahre ---
             H[f"p{thr}"] = np.nan
@@ -151,7 +161,7 @@ def main():
                 s = H[(H.lead_day == lead) & H.daylight]
                 y = (s.obs_kn >= thr).astype(int)
                 hourly_rows.append(dict(site=site, thr=thr, lead_day=lead, n=len(s),
-                                        auc_icon=roc_auc_score(y, s.icon_ws10),
+                                        auc_icon=roc_auc_score(y, s.dwd_ws10),
                                         auc_mean3=roc_auc_score(y, s.models_mean_ws10),
                                         auc_local=roc_auc_score(y, s[f"p{thr}"])))
             # --- täglich ---

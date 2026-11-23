@@ -50,9 +50,22 @@ jedes Jahr einmal ausgelassen und getestet.
 - Sentinel-1: Strand vor Prerow/Zingst ≈ 3–5 % weniger Wind als vor Darßer Ort, bei S–SW 10–13 % weniger.
   Über der Boddenkette ≈ 1,34–1,45 × der Messung Barth (Flugplatz, geschützt).
 
+## 7-Tage-Modell (frühere Modellläufe 2024–2025, auf einem Jahr trainiert, am anderen getestet)
+
+Tagesentscheidung „kitebar“ = mind. 2 h am Stück ab Schwelle bei Tageslicht. AUC DWD (ICON, Tag 7: GFS) → lokal:
+
+| Vorlauf | Darßer Ort 12 kn | Darßer Ort 15 kn | Barth 12 kn | Barth 15 kn |
+|---|---|---|---|---|
+| 1 Tag | 0,88 → 0,94 | 0,91 → 0,94 | 0,93 → 0,94 | 0,96 → 0,95 |
+| 3 Tage | 0,85 → 0,90 | 0,87 → 0,91 | 0,90 → 0,88 | 0,92 → 0,91 |
+| 5 Tage | 0,77 → 0,83 | 0,77 → 0,83 | 0,78 → 0,78 | 0,81 → 0,80 |
+| 7 Tage | 0,67 → 0,70 | 0,69 → 0,72 | 0,66 → 0,66 | 0,70 → 0,65 |
+
+Details: `results/7day_daily_skill.csv`, `results/7day_hourly_auc.csv`, `results/7day_importance.csv`.
+
 ## Offene Punkte
 
-- 7-Tage-Modell mit echten Previous-Runs-Daten trainieren (Skript fertig, Daten ab 2024)
+- 7-Tage-Modell in die App einbauen (Merkmale im Browser berechnen, XGBoost-Bäume in JavaScript auswerten)
 - Höher aufgelöster SAR-Wind (eigene Verarbeitung, ~300 m) für den Barther Bodden
 - PWA unter `app/`: lädt Open-Meteo, DWD (Bright Sky) und DMI im Browser und rechnet das Modell lokal
 
