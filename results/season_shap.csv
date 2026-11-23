@@ -1,0 +1,145 @@
+site,season,faktor,shap_kn
+darss_ort,Winter,Stabilität Luft−Wasser (t2m−SST),0.19191086
+darss_ort,Winter,Wassertemperatur,0.11714626
+darss_ort,Winter,Land-See-Kontrast,0.13422179
+darss_ort,Winter,Sonneneinstrahlung,0.05636643
+darss_ort,Winter,Bewölkung,0.03655739
+darss_ort,Winter,Grenzschichthöhe,0.0
+darss_ort,Winter,Höhenwind 850 hPa / 10 m,0.08677222
+darss_ort,Winter,Scherung 80/10 m,0.115552194
+darss_ort,Winter,Böenfaktor,0.5366955
+darss_ort,Winter,Druckgefälle Nord-Süd,0.68250734
+darss_ort,Winter,Schauer (CAPE),0.036753982
+darss_ort,Winter,Luftdichte,0.079832606
+darss_ort,Winter,Richtung sin,1.9725348
+darss_ort,Winter,Richtung cos,0.70554006
+darss_ort,Winter,Modellstreuung,0.036210425
+darss_ort,Winter,GFS−ICON,0.12641858
+darss_ort,Winter,Tageszeit,0.01810694
+darss_ort,Winter,ICON-Stärke,0.31013876
+darss_ort,Frühling,Stabilität Luft−Wasser (t2m−SST),0.07263688
+darss_ort,Frühling,Wassertemperatur,0.11940713
+darss_ort,Frühling,Land-See-Kontrast,0.15999667
+darss_ort,Frühling,Sonneneinstrahlung,0.0752517
+darss_ort,Frühling,Bewölkung,0.08813489
+darss_ort,Frühling,Grenzschichthöhe,0.0
+darss_ort,Frühling,Höhenwind 850 hPa / 10 m,0.1002537
+darss_ort,Frühling,Scherung 80/10 m,0.11152603
+darss_ort,Frühling,Böenfaktor,0.41378748
+darss_ort,Frühling,Druckgefälle Nord-Süd,0.6462027
+darss_ort,Frühling,Schauer (CAPE),0.05828482
+darss_ort,Frühling,Luftdichte,0.09637582
+darss_ort,Frühling,Richtung sin,1.4767499
+darss_ort,Frühling,Richtung cos,0.4068981
+darss_ort,Frühling,Modellstreuung,0.03636574
+darss_ort,Frühling,GFS−ICON,0.15577757
+darss_ort,Frühling,Tageszeit,0.04292608
+darss_ort,Frühling,ICON-Stärke,0.36036783
+darss_ort,Sommer,Stabilität Luft−Wasser (t2m−SST),0.10676776
+darss_ort,Sommer,Wassertemperatur,0.07528418
+darss_ort,Sommer,Land-See-Kontrast,0.36406112
+darss_ort,Sommer,Sonneneinstrahlung,0.05473325
+darss_ort,Sommer,Bewölkung,0.12376052
+darss_ort,Sommer,Grenzschichthöhe,0.0
+darss_ort,Sommer,Höhenwind 850 hPa / 10 m,0.07371899
+darss_ort,Sommer,Scherung 80/10 m,0.087989524
+darss_ort,Sommer,Böenfaktor,0.5728123
+darss_ort,Sommer,Druckgefälle Nord-Süd,0.6064623
+darss_ort,Sommer,Schauer (CAPE),0.085850395
+darss_ort,Sommer,Luftdichte,0.11423136
+darss_ort,Sommer,Richtung sin,1.2204663
+darss_ort,Sommer,Richtung cos,0.3426523
+darss_ort,Sommer,Modellstreuung,0.108751155
+darss_ort,Sommer,GFS−ICON,0.13956735
+darss_ort,Sommer,Tageszeit,0.08548751
+darss_ort,Sommer,ICON-Stärke,0.4995182
+darss_ort,Herbst,Stabilität Luft−Wasser (t2m−SST),0.094412275
+darss_ort,Herbst,Wassertemperatur,0.12128104
+darss_ort,Herbst,Land-See-Kontrast,0.15177384
+darss_ort,Herbst,Sonneneinstrahlung,0.070452236
+darss_ort,Herbst,Bewölkung,0.08764851
+darss_ort,Herbst,Grenzschichthöhe,0.0
+darss_ort,Herbst,Höhenwind 850 hPa / 10 m,0.063267425
+darss_ort,Herbst,Scherung 80/10 m,0.09077762
+darss_ort,Herbst,Böenfaktor,0.54649556
+darss_ort,Herbst,Druckgefälle Nord-Süd,0.64818704
+darss_ort,Herbst,Schauer (CAPE),0.06511576
+darss_ort,Herbst,Luftdichte,0.11489244
+darss_ort,Herbst,Richtung sin,2.0777283
+darss_ort,Herbst,Richtung cos,0.7670253
+darss_ort,Herbst,Modellstreuung,0.08086655
+darss_ort,Herbst,GFS−ICON,0.1756745
+darss_ort,Herbst,Tageszeit,0.0324094
+darss_ort,Herbst,ICON-Stärke,0.46001998
+barth,Winter,Stabilität Luft−Wasser (t2m−SST),0.044061266
+barth,Winter,Wassertemperatur,0.15277795
+barth,Winter,Land-See-Kontrast,0.1611148
+barth,Winter,Sonneneinstrahlung,0.05752499
+barth,Winter,Bewölkung,0.037646912
+barth,Winter,Grenzschichthöhe,0.0
+barth,Winter,Höhenwind 850 hPa / 10 m,0.04862692
+barth,Winter,Scherung 80/10 m,0.094726294
+barth,Winter,Böenfaktor,0.48251763
+barth,Winter,Druckgefälle Nord-Süd,0.048739534
+barth,Winter,Schauer (CAPE),0.008205094
+barth,Winter,Luftdichte,0.11158033
+barth,Winter,Richtung sin,0.3949722
+barth,Winter,Richtung cos,0.33664632
+barth,Winter,Modellstreuung,0.10145187
+barth,Winter,GFS−ICON,0.29685363
+barth,Winter,Tageszeit,0.032363694
+barth,Winter,ICON-Stärke,0.16095991
+barth,Frühling,Stabilität Luft−Wasser (t2m−SST),0.082426876
+barth,Frühling,Wassertemperatur,0.054580797
+barth,Frühling,Land-See-Kontrast,0.041945763
+barth,Frühling,Sonneneinstrahlung,0.16051784
+barth,Frühling,Bewölkung,0.18877274
+barth,Frühling,Grenzschichthöhe,0.0
+barth,Frühling,Höhenwind 850 hPa / 10 m,0.07931129
+barth,Frühling,Scherung 80/10 m,0.1875352
+barth,Frühling,Böenfaktor,0.48611847
+barth,Frühling,Druckgefälle Nord-Süd,0.058797926
+barth,Frühling,Schauer (CAPE),0.04497063
+barth,Frühling,Luftdichte,0.0807219
+barth,Frühling,Richtung sin,0.18667254
+barth,Frühling,Richtung cos,0.38889083
+barth,Frühling,Modellstreuung,0.1017169
+barth,Frühling,GFS−ICON,0.20175643
+barth,Frühling,Tageszeit,0.11755605
+barth,Frühling,ICON-Stärke,0.061273318
+barth,Sommer,Stabilität Luft−Wasser (t2m−SST),0.13283046
+barth,Sommer,Wassertemperatur,0.102743976
+barth,Sommer,Land-See-Kontrast,0.07147965
+barth,Sommer,Sonneneinstrahlung,0.23595412
+barth,Sommer,Bewölkung,0.1454037
+barth,Sommer,Grenzschichthöhe,0.0
+barth,Sommer,Höhenwind 850 hPa / 10 m,0.08474572
+barth,Sommer,Scherung 80/10 m,0.10803003
+barth,Sommer,Böenfaktor,0.5367795
+barth,Sommer,Druckgefälle Nord-Süd,0.1810331
+barth,Sommer,Schauer (CAPE),0.11072525
+barth,Sommer,Luftdichte,0.06236905
+barth,Sommer,Richtung sin,0.26148155
+barth,Sommer,Richtung cos,0.1566235
+barth,Sommer,Modellstreuung,0.1368053
+barth,Sommer,GFS−ICON,0.23362736
+barth,Sommer,Tageszeit,0.045870103
+barth,Sommer,ICON-Stärke,0.11339779
+barth,Herbst,Stabilität Luft−Wasser (t2m−SST),0.065850236
+barth,Herbst,Wassertemperatur,0.060444716
+barth,Herbst,Land-See-Kontrast,0.06776395
+barth,Herbst,Sonneneinstrahlung,0.12543082
+barth,Herbst,Bewölkung,0.05596382
+barth,Herbst,Grenzschichthöhe,0.0
+barth,Herbst,Höhenwind 850 hPa / 10 m,0.04863916
+barth,Herbst,Scherung 80/10 m,0.111758634
+barth,Herbst,Böenfaktor,0.55292314
+barth,Herbst,Druckgefälle Nord-Süd,0.064389855
+barth,Herbst,Schauer (CAPE),0.020387031
+barth,Herbst,Luftdichte,0.08543788
+barth,Herbst,Richtung sin,0.31484208
+barth,Herbst,Richtung cos,0.2694019
+barth,Herbst,Modellstreuung,0.10599485
+barth,Herbst,GFS−ICON,0.2849001
+barth,Herbst,Tageszeit,0.11944701
+barth,Herbst,ICON-Stärke,0.12260406

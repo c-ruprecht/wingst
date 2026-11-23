@@ -1,0 +1,41 @@
+site,season,klasse,n,bias_kn
+darss_ort,Winter,Luft ≥3° kälter (labil),282,-1.1771071554438923
+darss_ort,Winter,1–3° kälter,568,0.2653636919760538
+darss_ort,Winter,neutral,917,1.5895580594291545
+darss_ort,Winter,1–3° wärmer,777,2.8077110121072137
+darss_ort,Winter,Luft ≥3° wärmer (stabil),361,1.9196263675657803
+darss_ort,Frühling,Luft ≥3° kälter (labil),141,0.45855170170359705
+darss_ort,Frühling,1–3° kälter,598,0.4914276630868076
+darss_ort,Frühling,neutral,1059,0.7734743441563962
+darss_ort,Frühling,1–3° wärmer,626,0.21559666029093305
+darss_ort,Frühling,Luft ≥3° wärmer (stabil),372,0.34227196155314643
+darss_ort,Sommer,Luft ≥3° kälter (labil),322,2.476042798614976
+darss_ort,Sommer,1–3° kälter,1060,2.8095180244419944
+darss_ort,Sommer,neutral,971,1.6322269892474908
+darss_ort,Sommer,1–3° wärmer,275,-0.23200046935049454
+darss_ort,Sommer,Luft ≥3° wärmer (stabil),109,-0.7979338020867854
+darss_ort,Herbst,Luft ≥3° kälter (labil),530,0.359442550396595
+darss_ort,Herbst,1–3° kälter,866,1.1333192248110253
+darss_ort,Herbst,neutral,990,2.0723746181913048
+darss_ort,Herbst,1–3° wärmer,363,1.1929957428376543
+darss_ort,Herbst,Luft ≥3° wärmer (stabil),107,0.16376573361808092
+barth,Winter,Luft ≥3° kälter (labil),344,-0.5062226313239876
+barth,Winter,1–3° kälter,472,-0.8341601148068503
+barth,Winter,neutral,632,-0.5112724143917851
+barth,Winter,1–3° wärmer,488,0.004276284719800338
+barth,Winter,Luft ≥3° wärmer (stabil),666,-0.12397630931348985
+barth,Frühling,Luft ≥3° kälter (labil),165,-0.7183141363797768
+barth,Frühling,1–3° kälter,379,-0.32477807482665116
+barth,Frühling,neutral,679,0.08542901039999427
+barth,Frühling,1–3° wärmer,611,0.24697580484807505
+barth,Frühling,Luft ≥3° wärmer (stabil),1034,0.1813263172994316
+barth,Sommer,Luft ≥3° kälter (labil),404,-0.793104829276033
+barth,Sommer,1–3° kälter,704,-0.16492559862510076
+barth,Sommer,neutral,721,0.18205451351321342
+barth,Sommer,1–3° wärmer,464,-0.046096892621133756
+barth,Sommer,Luft ≥3° wärmer (stabil),516,0.01568002308987819
+barth,Herbst,Luft ≥3° kälter (labil),571,-0.8876607000779357
+barth,Herbst,1–3° kälter,639,-0.44040354051837594
+barth,Herbst,neutral,725,-0.44901083003840303
+barth,Herbst,1–3° wärmer,386,-0.40985004264174135
+barth,Herbst,Luft ≥3° wärmer (stabil),332,-0.0045997606680394385
