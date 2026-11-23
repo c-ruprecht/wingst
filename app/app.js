@@ -25,6 +25,9 @@ const state = {
   obs: {},
   model: null,       // { manifest, hourly:{site:{thr:model}}, daily:{…} }
   local: null,       // { site: { thr: { p:[…], day:{date:p} } } }
+  ens: null,         // Ensemble-Läufe je Standort (WingstEns.fetchAll)
+  ensBias: null,     // richtungsabhängige Abweichung je Station/Modell
+  ensCache: {},
   modelSel: load("model", "icon"),
   thr: Number(load("thr", 12)),
   spot: load("spot", "zingst"),
@@ -242,6 +245,16 @@ function daylightHours(o, day) {
   return [Math.ceil(hr), Math.floor(hs) - 1];
 }
 
+function ensFor(sp, byDay) {
+  const site = siteOf(sp);
+  if (!state.ens || !state.ens[site]) return null;
+  if (state.ensCache[sp.id]) return state.ensCache[sp.id];
+  try {
+    const hb = new Map([...byDay].map(([d, hs]) => [d, hs.map(h => h.hour)]));
+    return (state.ensCache[sp.id] = WingstEns.probabilities(state.ens[site], state.ensBias?.[site], sp.win, hb, THRESHOLDS, MIN_RUN, inWindow));
+  } catch (e) { console.warn("Ensemble", e); return null; }
+}
+
 /** Tage eines Spots: je Stunde Werte aller Modelle + lokale Wahrscheinlichkeiten; je Schwelle Läufe. */
 function days(spotId) {
   const sp = SPOTS.find(s => s.id === spotId);
@@ -254,7 +267,7 @@ function days(spotId) {
     const [h0, h1] = daylightHours(o, day);
     if (hour < h0 || hour > h1) return;
     if (!byDay.has(day)) byDay.set(day, []);
-    const h = { hour, models: {} };
+    const h = { hour, t, models: {} };
     for (const m of ["icon", "gfs", "ecmwf", "mean"]) h.models[m] = { kn: o[m].ws[i], dir: o[m].wd[i], gust: o[m].gust[i] };
     h.dirMean = o.mean.wd[i];
     h.now = nc ? (nc.map[t] ?? null) : null;
@@ -268,6 +281,10 @@ function days(spotId) {
     }
     byDay.get(day).push(h);
   });
+  const E = ensFor(sp, byDay);
+  if (E) for (const hs of byDay.values()) for (const h of hs) {
+    h.ens = E.hourly[h.t] || null; h.aifs = E.median.aifs?.[h.t] ?? null; h.wn2 = E.median.wn2?.[h.t] ?? null;
+  }
   return [...byDay.entries()].map(([date, hours]) => {
     const runs = {}, local = {}, pday = {};
     for (const m of ["icon", "gfs", "ecmwf", "mean"]) {
@@ -279,7 +296,8 @@ function days(spotId) {
       pday[thr] = loc && !tooRare(sp, thr) ? (loc[thr].day[date] ?? null) : null;
     }
     const hasNow = hours.some(h => h.now != null);
-    return { date, hours, runs, local, pday, hasNow, nowErr: nc ? nc.err : null };
+    const ens = E ? E.daily[date] : null;
+    return { date, hours, runs, local, pday, hasNow, nowErr: nc ? nc.err : null, ens, hasEns: !!E };
   });
 }
 
@@ -299,7 +317,7 @@ function bestRun(hours, ok) {
 const runClass = len => len >= 4 ? "r4" : len >= MIN_RUN ? "r2" : len >= 1 ? "r1" : "r0";
 const runText = r => r && r.len ? `${r.len} h` : "–";
 const spanText = r => r && r.len ? `${r.start}–${r.end + 1} Uhr` : "";
-const pct = p => p == null ? "" : `${Math.round(p * 100)} %`;
+const pct = p => p == null ? "" : `${Math.round(p * 100)}\u00a0%`;
 /** Hauptwert einer Zelle: lokal korrigiert, sonst gewähltes Modell */
 const mainRun = (d, thr) => d.local[thr] ?? d.runs[state.modelSel][thr];
 
@@ -375,7 +393,8 @@ function drawWeek() {
       const rare = tooRare(sp, state.thr);
       const r = rare ? { len: 0 } : mainRun(d, state.thr);
       const raw = d.runs[state.modelSel][state.thr];
-      const sub = d.local[state.thr] ? `<span class="sub">${MODEL_LABEL[state.modelSel]} ${raw.len || "–"}</span>` : "";
+      const ep = d.ens?.[state.thr]?.p;
+      const sub = ep != null ? `<span class="sub">E ${Math.round(ep * 100)}%</span>` : d.local[state.thr] ? `<span class="sub">${MODEL_LABEL[state.modelSel]} ${raw.len || "–"}</span>` : "";
       const p = d.pday[state.thr];
       html += `<td class="cell ${rare ? "r0 rare" : runClass(r.len)}${isWeekend(d.date) ? " we" : ""}" data-spot="${sp.id}" title="${rare ? "zu selten für eine Prognose" : spanText(r)}">
         <span class="v">${rare ? "·" : (r.len || "–")}</span>${p != null ? `<span class="pd">${Math.round(p * 100)}%</span>` : ""}${sub}</td>`;
@@ -385,7 +404,7 @@ function drawWeek() {
   t.innerHTML = html + "</tbody>";
   t.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot)));
   $("#weekHint").innerHTML = state.local
-    ? `Große Zahl: <b>lokal korrigiert</b>, längste Zeit am Stück (h) bei Tageslicht ab ${state.thr} kn aus passender Richtung. Prozent: Chance, dass der Tag kitebar ist (mind. ${MIN_RUN} h). Klein: ${MODEL_LABEL[state.modelSel]} unkorrigiert.${state.thr >= 20 ? " Bodden bei 20+ kn: zu selten für eine Prognose." : ""}`
+    ? `Große Zahl: <b>lokal korrigiert</b>, längste Zeit am Stück (h) bei Tageslicht ab ${state.thr} kn aus passender Richtung. Prozent: Chance laut lokalem Modell, dass der Tag kitebar ist (mind. ${MIN_RUN} h). „E“: Anteil von rund 240 Ensemble-Läufen aus 5 Modellen (inkl. KI-Modelle), richtungskorrigiert.${state.thr >= 20 ? " Bodden bei 20+ kn: zu selten für eine Prognose." : ""}`
     : `Zahl: längste Zeit am Stück (h) bei Tageslicht ab ${state.thr} kn aus passender Richtung (${MODEL_LABEL[state.modelSel]}, unkorrigiert – Korrekturmodell lädt noch).`;
 }
 
@@ -414,22 +433,30 @@ function drawDetail() {
     let firstRow = true;
     const cells = (fn) => { const f = firstRow; firstRow = false; return sunL(f) + d.hours.map(fn).join("") + sunR(f); };
     const offCls = h => h.dirMean != null && !inWindow(h.dirMean, sp.win) ? " off" : "";
+    const medRow = (k, label, title) => `<tr class="mrow"><th scope="row" title="${title}">${label}</th>${cells(h => {
+      const v = h[k]; return `<td class="${knCls(v)}${offCls(h)}">${v == null ? "" : Math.round(v)}</td>`; })}</tr>`;
+    const ed = d.ens?.[thr];
+    const ensLine = ed && ed.p != null ? `<p class="ensline">Ensemble ${thr}+ kn, ≥${MIN_RUN} h am Stück: <b>${pct(ed.p)}</b> · ${WingstEns.MODELS.filter(m => ed.byModel[m.key] != null).map(m => `${m.label.replace(/ \(KI\)/, "")} ${pct(ed.byModel[m.key])}`).join(" · ")}</p>` : "";
     const knRow = (m, label) => `<tr class="mrow"><th scope="row">${label}</th>${cells(h => {
       const x = h.models[m]; return `<td class="${knCls(x.kn)}${offCls(h)}">${x.kn == null ? "–" : Math.round(x.kn)}</td>`; })}</tr>`;
     return `<section class="fday${isWeekend(d.date) ? " we" : ""}">
       <div class="day-h"><b>${dayLabel(d.date, i)}</b>
         <span class="cmp">${rare ? "20+ kn am Bodden: zu selten für eine Prognose"
           : lr ? `<b>lokal ${runText(lr)}</b> ${spanText(lr)}${d.pday[thr] != null ? ` · kitebar ${pct(d.pday[thr])}` : ""}`
-          : `${MODEL_LABEL[state.modelSel]} ${runText(d.runs[state.modelSel][thr])} ${spanText(d.runs[state.modelSel][thr])}`}</span></div>
+          : `${MODEL_LABEL[state.modelSel]} ${runText(d.runs[state.modelSel][thr])} ${spanText(d.runs[state.modelSel][thr])}`}${!rare && ed && ed.p != null ? ` · Ensemble ${pct(ed.p)}` : ""}</span></div>
+      ${rare ? "" : ensLine}
       <div class="ftable-wrap"><table class="ftable">
         <tbody>
           <tr class="hrow"><th scope="row">Uhr</th>${cells(h => `<td>${String(h.hour).padStart(2, "0")}</td>`)}</tr>
           <tr class="drow"><th scope="row">Richtung</th>${cells(h => `<td class="${offCls(h).trim()}" title="${compass(h.dirMean)}">${h.dirMean != null ? arrow(h.dirMean) : ""}</td>`)}</tr>
           ${knRow("icon", "ICON kn")}${knRow("gfs", "GFS kn")}${knRow("ecmwf", "ECMWF kn")}
+          ${d.hasEns ? medRow("aifs", "AIFS kn", "ECMWF AIFS (KI), Median der 51 Läufe") + medRow("wn2", "WN2 kn", "Google WeatherNext 2 (KI), Median der 64 Läufe") : ""}
           ${d.hasNow ? `<tr class="mrow nrow"><th scope="row" title="ICON plus aktueller Messfehler (${d.nowErr > 0 ? "+" : ""}${d.nowErr.toFixed(1)} kn), klingt ab">Jetzt-korr.</th>${cells(h => `<td class="${h.now == null ? "kx" : knCls(h.now)}${offCls(h)}">${h.now == null ? "" : Math.round(h.now)}</td>`)}</tr>` : ""}
           <tr class="grow2"><th scope="row">Böen</th>${cells(h => { const g = h.models.icon.gust ?? h.models.gfs.gust; return `<td>${g == null ? "" : Math.round(g)}</td>`; })}</tr>
           ${state.local ? `<tr class="lrow"><th scope="row">Lokal ${thr}+</th>${cells(h => {
             const p = rare ? null : h.p[thr]; return `<td class="${pCls(p)}${offCls(h)}" title="Chance auf ${thr}+ kn">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>` : ""}
+          ${d.hasEns ? `<tr class="lrow erow"><th scope="row" title="Anteil der Ensemble-Läufe (5 Modelle gleich gewichtet) mit ${thr}+ kn aus passender Richtung, korrigiert">Ens ${thr}+</th>${cells(h => {
+            const p = h.ens ? h.ens[thr] : null; return `<td class="${pCls(p)}" title="Ensemble: ${p == null ? "–" : Math.round(p * 100) + " %"}">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>` : ""}
           <tr class="wrow"><th scope="row">Wetter</th>${cells(h => `<td title="${h.cloud == null ? "" : Math.round(h.cloud) + " % Wolken"}">${h.precip > 0.2 ? "🌧" : cloudIcon(h.cloud)}</td>`)}</tr>
           <tr class="trow"><th scope="row">°C</th>${cells(h => `<td>${h.t2m == null ? "" : Math.round(h.t2m)}</td>`)}</tr>
         </tbody></table></div>
@@ -465,6 +492,7 @@ function selectSpot(id) {
 }
 
 function recomputeLocal() {
+  state.ensCache = {};
   try { state.local = computeLocal(); }
   catch (e) { console.warn("Lokales Modell", e); state.local = null; }
 }
@@ -473,13 +501,15 @@ async function refresh() {
   const st = $("#status");
   st.textContent = "Lade Vorhersage und Messwerte …"; st.className = "status";
   $("#refreshBtn").disabled = true;
-  const [fc, obs] = await Promise.allSettled([fetchForecast(), fetchObs()]);
+  const [fc, obs, ens] = await Promise.allSettled([fetchForecast(), fetchObs(), WingstEns.fetchAll(fetchJSON)]);
   if (fc.status === "fulfilled") state.fc = fc.value;
   if (obs.status === "fulfilled") state.obs = obs.value;
+  if (ens.status === "fulfilled") { state.ens = ens.value; state.ensCache = {}; }
+  else console.warn("Ensemble nicht geladen", ens.reason);
   recomputeLocal();
   if (fc.status === "fulfilled") {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ fc: state.fc, obs: state.obs })); } catch (e) {}
-    st.textContent = `Vorhersage von ${fmtTime(state.fc.fetched)} Uhr · ${Object.keys(state.obs).length} Messstationen · ${state.local ? "lokale Korrektur aktiv" : "lokale Korrektur lädt …"}`;
+    st.textContent = `Vorhersage von ${fmtTime(state.fc.fetched)} Uhr · ${Object.keys(state.obs).length} Messstationen · ${state.local ? "lokale Korrektur aktiv" : "lokale Korrektur lädt …"}${state.ens ? " · Ensemble aktiv" : ""}`;
   } else if (state.fc) {
     st.textContent = `Keine Verbindung zu Open-Meteo (${fc.reason.message}). Zeige gespeicherte Vorhersage von ${new Date(state.fc.fetched).toLocaleString("de-DE")}.`;
     st.className = "status warn";
@@ -513,6 +543,7 @@ function init() {
   if (window.maplibregl) initMap();
   else $("#map").innerHTML = '<p class="maperr">Karte nicht verfügbar (offline).</p>';
   renderAll();
+  fetchJSON("model/ens_bias.json").then(b => { state.ensBias = b; state.ensCache = {}; renderAll(); }).catch(e => console.warn("Ensemble-Korrektur", e));
   loadLocalModel()
     .then(m => { state.model = m; recomputeLocal(); renderAll();
       if (state.fc && state.local) $("#status").textContent = $("#status").textContent.replace("lokale Korrektur lädt …", "lokale Korrektur aktiv"); })

@@ -1,0 +1,29 @@
+# Speichert zweimal täglich alle Ensemble- und Modellvorhersagen als Release-Datei (Release "archiv-JJJJ-MM").
+# So entsteht ohne eigenen Server ein Trainingsarchiv; das Repo selbst bleibt klein.
+name: Vorhersage-Archiv
+on:
+  schedule:
+    - cron: "41 10 * * *"   # nach den 00-UTC-Läufen
+    - cron: "41 22 * * *"   # nach den 12-UTC-Läufen
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: archive
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vorhersagen holen
+        run: python3 archive/fetch_archive.py out
+      - name: Als Release-Datei hochladen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STAMP=$(cat out/STAMP)
+          TAG="archiv-${STAMP:0:7}"
+          tar -czf "wingst-${STAMP}.tar.gz" -C out .
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Vorhersage-Archiv ${STAMP:0:7}" --notes "Automatisch: Ensemble- und Modellvorhersagen, zweimal täglich (archive/fetch_archive.py)." --prerelease
+          gh release upload "$TAG" "wingst-${STAMP}.tar.gz" --clobber
