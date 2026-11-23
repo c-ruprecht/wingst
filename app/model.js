@@ -37,7 +37,22 @@ const WingstModel = (() => {
    * sst: Wassertemperatur am Ort (Zahl), seaSst: Wassertemperatur Darßer Schwelle (Zahl)
    * time: lokale Zeitstempel "YYYY-MM-DDTHH:MM", lead: Vorlauftage je Stunde
    */
-  function hourlyFeatures(site, barth, sea, sst, seaSst, time, lead) {
+  const at = (v, i) => Array.isArray(v) ? num(v[i]) : num(v);   // Zahl oder Array je Stunde
+
+  /** Bodden-Wassertemperatur (Ersatz): exponentiell geglättete Lufttemperatur Barth, wie pandas ewm(alpha, adjust=True). */
+  function boddenProxy(t2m, tauDays = 5) {
+    const a = 1 / (24 * tauDays), q = 1 - a, out = [];
+    let num_ = 0, den = 0;
+    for (const v of t2m) {
+      num_ *= q; den *= q;
+      if (num(v) !== null) { num_ += v; den += 1; }
+      out.push(den > 0 ? num_ / den : null);
+    }
+    return out;
+  }
+
+  /* sst, seaSst, bod: Zahl oder Array je Stunde (Wert zum Ausgabezeitpunkt) */
+  function hourlyFeatures(site, barth, sea, sst, seaSst, time, lead, bod = null) {
     const rows = [];
     for (let i = 0; i < time.length; i++) {
       const r = {};
@@ -58,13 +73,24 @@ const WingstModel = (() => {
       if (u !== null && v !== null) { const a = Math.atan2(-u, -v); r.dir_sin = Math.sin(a); r.dir_cos = Math.cos(a); }
       else { r.dir_sin = null; r.dir_cos = null; }
       const t2m = fb(site.icon.t2m?.[i], site.gfs.t2m?.[i], site.ecmwf.t2m?.[i]);
-      r.sst = num(sst);
+      r.sst = at(sst, i);
       r.t2m_minus_sst = t2m !== null && r.sst !== null ? t2m - r.sst : null;
       const bt = fb(barth.icon.t2m?.[i], barth.gfs.t2m?.[i]);
-      r.land_sea_dT = bt !== null && num(seaSst) !== null ? bt - seaSst : null;
+      const ss = at(seaSst, i);
+      r.land_sea_dT = bt !== null && ss !== null ? bt - ss : null;
       const sp = fb(sea.icon.pmsl?.[i], sea.gfs.pmsl?.[i]), bp = fb(barth.icon.pmsl?.[i], barth.gfs.pmsl?.[i]);
       r.dp_north_south = sp !== null && bp !== null ? sp - bp : null;
+      const b = at(bod, i);
+      r.bodden_wt = b;
+      r.t2m_minus_bodden = t2m !== null && b !== null ? t2m - b : null;
+      r.bodden_minus_sea = b !== null && ss !== null ? b - ss : null;
       r.swrad = fb(site.icon.swrad?.[i], site.gfs.swrad?.[i]);
+      r.thermal = r.land_sea_dT === null ? null : Math.max(r.land_sea_dT, 0) * (r.swrad ?? 0) / 1000;
+      if (u !== null && v !== null) {
+        const wsm = Math.max(Math.sqrt(u * u + v * v), 1);
+        r.onshore_n = -v / wsm;
+        r.stab_onshore = r.t2m_minus_sst === null ? null : r.t2m_minus_sst * r.onshore_n;
+      } else { r.onshore_n = null; r.stab_onshore = null; }
       r.cloud = fb(site.icon.cloud?.[i], site.gfs.cloud?.[i], site.ecmwf.cloud?.[i]);
       r.cape = fb(site.icon.cape?.[i], site.gfs.cape?.[i]);
       r.precip = fb(site.icon.precip?.[i], site.gfs.precip?.[i]);
@@ -73,6 +99,7 @@ const WingstModel = (() => {
       const d = new Date(time[i].slice(0, 10) + "T12:00:00Z");
       const doy = Math.floor((d - Date.UTC(d.getUTCFullYear(), 0, 0)) / 864e5);
       r.doy_sin = Math.sin(2 * Math.PI * doy / 365.25); r.doy_cos = Math.cos(2 * Math.PI * doy / 365.25);
+      r.blh = fb(site.gfs.blh?.[i]);
       r.lead_day = lead[i];
       r.dwd_ws10 = fb(r.icon_ws10, r.gfs_ws10);
       r._hour = hour; r._date = time[i].slice(0, 10);
@@ -102,6 +129,8 @@ const WingstModel = (() => {
         gust_max: nanmax(g("gfs_gust")), u_mean: nanmean(g("gfs_u")), v_mean: nanmean(g("gfs_v")),
         t2m_sst: nanmean(g("t2m_minus_sst")), land_sea: nanmax(g("land_sea_dT")),
         swrad: nanmean(g("swrad")), cloud: nanmean(g("cloud")), dp: nanmean(g("dp_north_south")),
+        bodden_dT: nanmean(g("t2m_minus_bodden")), bodden_sea: g("bodden_minus_sea").find(v => num(v) !== null) ?? null,
+        thermal_max: nanmax(g("thermal")),
         doy_sin: hs[0].r.doy_sin, doy_cos: hs[0].r.doy_cos,
         p_hours: hs.filter(h => h.p >= 0.5).length, p_mean: nanmean(hs.map(h => h.p)),
         p_run: longestRun(hs.map(h => h.p >= 0.5)),
@@ -114,7 +143,7 @@ const WingstModel = (() => {
 
   const vec = (row, feats) => feats.map(f => (row[f] === undefined ? null : row[f]));
 
-  return { predictProba, hourlyFeatures, dailyFeatures, vec };
+  return { predictProba, hourlyFeatures, dailyFeatures, vec, boddenProxy };
 })();
 
 if (typeof module !== "undefined") module.exports = WingstModel;

@@ -14,6 +14,8 @@ Aufruf
   python3 download_training_data.py --only dmi
   python3 download_training_data.py --only previous_runs   # für das 7-Tage-Modell
   python3 download_training_data.py --only satellite   # nach: copernicusmarine login
+  python3 download_training_data.py --only blh         # GFS-Grenzschichthöhe aus früheren Läufen (7-Tage-Modell)
+  python3 download_training_data.py --only sst_bodden  # Satelliten-Wassertemperatur Bodden + Ostsee (Copernicus)
 
 Für 1–3 reicht die Python-Standardbibliothek, für 4 das Paket copernicusmarine. Bereits geladene Dateien werden übersprungen,
 ein abgebrochener Lauf kann also einfach neu gestartet werden.
@@ -127,6 +129,47 @@ def satellite():
                                     output_directory=f"{OUT}/sentinel1", output_filename=fn, **SAT_BBOX)
         except Exception as e:   # z. B. Datensatz umbenannt oder nicht mehr verfügbar
             print(f"   übersprungen: {e}")
+
+
+# ---------- 1c. GFS-Grenzschichthöhe aus früheren Läufen (ICON/ECMWF liefern sie bei Open-Meteo nicht) ----------
+def blh():
+    import calendar
+    vars_ = [f"boundary_layer_height_previous_day{d}" for d in range(1, 8)]
+    for name in ("darss_ort", "barth"):
+        lat, lon = PLACES[name]
+        for y in PR_YEARS:
+            path = f"{OUT}/openmeteo_prev/{name}_gfs_blh_{y}.csv"
+            if os.path.exists(path):
+                continue
+            rows = []
+            for mon in range(1, 13):
+                last = calendar.monthrange(y, mon)[1]
+                print(f"  {name} BLH {y}-{mon:02d} …", end=" ", flush=True)
+                q = dict(latitude=lat, longitude=lon, start_date=f"{y}-{mon:02d}-01", end_date=f"{y}-{mon:02d}-{last}",
+                         hourly=",".join(vars_), models="gfs_seamless", timezone="UTC")
+                h = get("https://previous-runs-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q), timeout=120)["hourly"]
+                n = len(h["time"])
+                rows += zip(*([h["time"]] + [h.get(v, [None] * n) for v in vars_]))
+                print("ok", flush=True); time.sleep(0.5)
+            write_rows(path, ["time"] + vars_, rows); print(" ->", path, flush=True)
+
+
+# ---------- 4b. Satelliten-Wassertemperatur (Copernicus, DMI L4, 0.02°, täglich) ----------
+SST_DATASET = "DMI-BALTIC-SST-L4-NRT-OBS_FULL_TIME_SERIE"   # Produkt SST_BAL_SST_L4_NRT_OBSERVATIONS_010_007_b
+
+
+def sst_bodden():
+    try:
+        import copernicusmarine
+    except ImportError:
+        raise SystemExit("Paket fehlt: conda env update -f environment.yml  (oder pip install copernicusmarine)")
+    os.makedirs(f"{OUT}/sst_sat", exist_ok=True)
+    fn = "bal_sst_l4_2023_2025.nc"
+    if os.path.exists(f"{OUT}/sst_sat/{fn}"):
+        return
+    copernicusmarine.subset(dataset_id=SST_DATASET, variables=["analysed_sst"],
+                            start_datetime="2023-01-01", end_datetime="2025-12-31",
+                            output_directory=f"{OUT}/sst_sat", output_filename=fn, **SAT_BBOX)
 
 
 def get(url, binary=False, tries=6, timeout=180):
@@ -243,7 +286,8 @@ def dmi():
 
 
 STEPS = {"dwd": lambda: (dwd("wind", DWD_WIND, "wind"), dwd("pressure", DWD_PRESSURE, "pressure")),
-         "dmi": dmi, "openmeteo": openmeteo, "previous_runs": previous_runs, "satellite": satellite}
+         "dmi": dmi, "openmeteo": openmeteo, "previous_runs": previous_runs, "satellite": satellite,
+         "blh": blh, "sst_bodden": sst_bodden}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()

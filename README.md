@@ -73,3 +73,10 @@ Details: `results/7day_daily_skill.csv`, `results/7day_hourly_auc.csv`, `results
 
 DWD Open Data · DMI Open Data (CC BY 4.0) · Open-Meteo (CC BY 4.0, nicht-kommerziell) ·
 Copernicus Marine Service (Sentinel-1 L3 Wind) · IOW/BSH MARNET
+
+## Erweiterung November 2026: Thermik, Bodden, Nowcast
+
+- **Neue Merkmale (7-Tage-Modell):** Ersatz für die Bodden-Wassertemperatur (Lufttemperatur Barth, über 5 Tage geglättet), Bodden minus Ostsee, Luft minus Bodden, Thermik-Index (Land-See-Kontrast × Sonne), auflandige Komponente × Stabilität. Wirkung (Kreuzvalidierung 2024↔2025): stündliche AUC +0,005 bis +0,02; Tages-AUC Darßer Ort +0,002 bis +0,012; Barth unverändert (Tagesmodell Barth nutzt die neuen Merkmale nicht).
+- **Seewind** (`training/seabreeze.py`): An Sonnentagen mit schwachem Grundwind dreht Darßer Ort mittags von SO auf ONO und legt von 5 auf 8–9 kn zu; ICON bildet das gut ab. In Barth unterschätzt ICON die Thermik am späten Nachmittag um 1–1,5 kn.
+- **Nowcast in der App:** Zeile „Jetzt-korr.“ = ICON + aktueller Messfehler an Darßer Ort/Barth, klingt mit τ = 20 h bzw. 3 h ab (aus der Autokorrelation des ICON-Fehlers 2023–2025: MAE Darßer Ort 2,9 → 1,8 kn nach 3 h).
+- **Noch herunterladen:** `--only blh` (GFS-Grenzschichthöhe frühere Läufe) und `--only sst_bodden` (Copernicus-Satelliten-Wassertemperatur, zur Prüfung des Bodden-Ersatzes). Das Training nutzt die Grenzschichthöhe automatisch, sobald die Dateien da sind.

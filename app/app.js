@@ -13,7 +13,11 @@ const MODEL_SITES = [
 ];
 const SPOT_SITE = { darss: "darss_ort", barth: "barth" };          // Spot.ref -> Modellstandort
 const VAR_MAP = { ws: "wind_speed_10m", wd: "wind_direction_10m", gust: "wind_gusts_10m", ws80: "wind_speed_80m",
-  t2m: "temperature_2m", pmsl: "pressure_msl", cloud: "cloud_cover", swrad: "shortwave_radiation", cape: "cape", precip: "precipitation" };
+  t2m: "temperature_2m", pmsl: "pressure_msl", cloud: "cloud_cover", swrad: "shortwave_radiation", cape: "cape", precip: "precipitation",
+  blh: "boundary_layer_height" };
+/* Abklingzeit (h) des aktuellen Messfehlers von ICON – aus 2023–2025 geschätzt (training/nowcast) */
+const NOWCAST_TAU = { darss_ort: 20, barth: 3 };
+const HEIGHT_FACTOR = { darss: 0.983, barth: 1.0 };   // Anemometer 12 m -> 10 m wie im Training
 const P_ON = 0.5;   // ab dieser Wahrscheinlichkeit zählt eine Stunde im lokalen Modell als „Wind über Schwelle“
 
 const state = {
@@ -90,8 +94,11 @@ async function fetchForecast() {
   const spots = {}, sites = {};
   SPOTS.forEach((s, i) => { spots[s.id] = parse(res[i]); });
   MODEL_SITES.forEach((s, i) => { sites[s.id] = parse(res[SPOTS.length + i]); });
-  const sst = await fetchSST().catch(e => { console.warn("Wassertemperatur", e); return {}; });
-  return { spots, sites, sst, fetched: new Date().toISOString() };
+  const [sst, bodden] = await Promise.all([
+    fetchSST().catch(e => { console.warn("Wassertemperatur", e); return {}; }),
+    fetchBodden().catch(e => { console.warn("Bodden-Temperatur", e); return null; })
+  ]);
+  return { spots, sites, sst, bodden, fetched: new Date().toISOString() };
 }
 
 async function fetchSST() {
@@ -106,6 +113,20 @@ async function fetchSST() {
   });
   return out;
 }
+
+/** Bodden-Wassertemperatur (Ersatz): geglättete Lufttemperatur Barth der letzten 21 Tage + Vorhersage. */
+async function fetchBodden() {
+  const b = MODEL_SITES.find(s => s.id === "barth");
+  const p = new URLSearchParams({ latitude: b.lat, longitude: b.lon, hourly: "temperature_2m", models: "icon_seamless",
+    past_days: "21", forecast_days: "7", timezone: "Europe/Berlin" });
+  const r = await fetchJSON("https://api.open-meteo.com/v1/forecast?" + p);
+  const t = r.hourly.temperature_2m || r.hourly.temperature_2m_icon_seamless;
+  const proxy = WingstModel.boddenProxy(t);
+  const map = {};
+  r.hourly.time.forEach((k, i) => { map[k] = proxy[i]; });
+  return map;
+}
+const minusDays = (t, d) => new Date(new Date(t + ":00Z") - d * 864e5).toISOString().slice(0, 16);
 
 function meanModel(o) {
   const n = o.time.length, ws = [], wd = [], gust = [];
@@ -173,20 +194,44 @@ function computeLocal() {
   for (const site of Object.keys(M.manifest.sites)) {
     const S = fc.sites[site];
     const lead = S.time.map(t => Math.min(7, Math.max(1, dayIdx(t))));
+    const bod = fc.bodden ? S.time.map((t, i) => fc.bodden[minusDays(t, lead[i])] ?? null) : null;
     const rows = WingstModel.hourlyFeatures(S, fc.sites.barth, fc.sites.darss_schwelle,
-      fc.sst?.[site] ?? null, fc.sst?.darss_schwelle ?? null, S.time, lead);
+      fc.sst?.[site] ?? null, fc.sst?.darss_schwelle ?? null, S.time, lead, bod);
+    const dfeats = Array.isArray(M.manifest.daily_features) ? M.manifest.daily_features : M.manifest.daily_features[site];
     out[site] = {};
     for (const thr of M.manifest.thresholds) {
       const hm = M.hourly[site][thr], dm = M.daily[site][thr];
       const p = rows.map(r => WingstModel.predictProba(hm, WingstModel.vec(r, M.manifest.hourly_features)));
       const day = {};
       for (const d of WingstModel.dailyFeatures(rows, p, thr)) {
-        day[d.date] = WingstModel.predictProba(dm, WingstModel.vec(d.x, M.manifest.daily_features));
+        day[d.date] = WingstModel.predictProba(dm, WingstModel.vec(d.x, dfeats));
       }
       out[site][thr] = { p, day, time: S.time };
     }
   }
   return out;
+}
+
+/* ---------- Nowcast: aktueller Messfehler von ICON, klingt über einige Stunden ab ---------- */
+function nowcast(sp) {
+  const fc = state.fc, o = state.obs[sp.ref];
+  if (!fc || !fc.sites || !o || o.kn == null) return null;
+  const site = siteOf(sp), S = fc.sites[site];
+  const obsTime = new Date(o.time);
+  if (Date.now() - obsTime > 3 * 3600e3) return null;          // Messung zu alt
+  const key = obsTime.toLocaleString("sv-SE", { timeZone: "Europe/Berlin" }).slice(0, 13).replace(" ", "T") + ":00";
+  const k = S.time.indexOf(key);
+  if (k < 0 || S.icon.ws[k] == null) return null;
+  const err = o.kn * HEIGHT_FACTOR[sp.ref] - S.icon.ws[k];
+  const tau = NOWCAST_TAU[site];
+  const map = {};
+  const spotIcon = fc.spots[sp.id].icon.ws;
+  fc.spots[sp.id].time.forEach((t, i) => {
+    const L = i - k;
+    if (L < 0 || L > 24 || spotIcon[i] == null) return;
+    map[t] = Math.max(0, spotIcon[i] + err * Math.exp(-L / tau));
+  });
+  return { err, map, at: key };
 }
 
 /* ---------- Auswertung: Stunden am Stück ---------- */
@@ -202,6 +247,7 @@ function days(spotId) {
   const sp = SPOTS.find(s => s.id === spotId);
   const o = state.fc.spots[spotId];
   const loc = state.local && state.local[siteOf(sp)];
+  const nc = nowcast(sp);
   const byDay = new Map();
   o.time.forEach((t, i) => {
     const day = t.slice(0, 10), hour = Number(t.slice(11, 13));
@@ -211,6 +257,7 @@ function days(spotId) {
     const h = { hour, models: {} };
     for (const m of ["icon", "gfs", "ecmwf", "mean"]) h.models[m] = { kn: o[m].ws[i], dir: o[m].wd[i], gust: o[m].gust[i] };
     h.dirMean = o.mean.wd[i];
+    h.now = nc ? (nc.map[t] ?? null) : null;
     h.t2m = o.icon.t2m?.[i] ?? o.gfs.t2m?.[i] ?? null;
     h.cloud = o.icon.cloud?.[i] ?? o.gfs.cloud?.[i] ?? null;
     h.precip = o.icon.precip?.[i] ?? o.gfs.precip?.[i] ?? null;
@@ -231,7 +278,8 @@ function days(spotId) {
       local[thr] = loc && !tooRare(sp, thr) ? bestRun(hours, h => h.p[thr] != null && h.p[thr] >= P_ON && h.dirMean != null && inWindow(h.dirMean, sp.win)) : null;
       pday[thr] = loc && !tooRare(sp, thr) ? (loc[thr].day[date] ?? null) : null;
     }
-    return { date, hours, runs, local, pday };
+    const hasNow = hours.some(h => h.now != null);
+    return { date, hours, runs, local, pday, hasNow, nowErr: nc ? nc.err : null };
   });
 }
 
@@ -378,6 +426,7 @@ function drawDetail() {
           <tr class="hrow"><th scope="row">Uhr</th>${cells(h => `<td>${String(h.hour).padStart(2, "0")}</td>`)}</tr>
           <tr class="drow"><th scope="row">Richtung</th>${cells(h => `<td class="${offCls(h).trim()}" title="${compass(h.dirMean)}">${h.dirMean != null ? arrow(h.dirMean) : ""}</td>`)}</tr>
           ${knRow("icon", "ICON kn")}${knRow("gfs", "GFS kn")}${knRow("ecmwf", "ECMWF kn")}
+          ${d.hasNow ? `<tr class="mrow nrow"><th scope="row" title="ICON plus aktueller Messfehler (${d.nowErr > 0 ? "+" : ""}${d.nowErr.toFixed(1)} kn), klingt ab">Jetzt-korr.</th>${cells(h => `<td class="${h.now == null ? "kx" : knCls(h.now)}${offCls(h)}">${h.now == null ? "" : Math.round(h.now)}</td>`)}</tr>` : ""}
           <tr class="grow2"><th scope="row">Böen</th>${cells(h => { const g = h.models.icon.gust ?? h.models.gfs.gust; return `<td>${g == null ? "" : Math.round(g)}</td>`; })}</tr>
           ${state.local ? `<tr class="lrow"><th scope="row">Lokal ${thr}+</th>${cells(h => {
             const p = rare ? null : h.p[thr]; return `<td class="${pCls(p)}${offCls(h)}" title="Chance auf ${thr}+ kn">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>` : ""}

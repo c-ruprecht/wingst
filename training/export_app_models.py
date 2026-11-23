@@ -34,21 +34,25 @@ def compact(path):
 def main():
     hourly_feats = json.load(open(f"{MODELS}/hourly7_features.json"))
     daily_feats = json.load(open(f"{MODELS}/daily7_features.json"))
-    manifest = {"version": 1, "hourly_features": hourly_feats, "daily_features": daily_feats,
+    manifest = {"version": 2, "hourly_features": hourly_feats, "daily_features": daily_feats,
                 "sites": {}, "thresholds": list(T.THRS), "min_run": T.MIN_RUN,
                 "note": "Trainiert auf Open-Meteo Previous Runs 2024-2025 gegen DWD Darßer Ort / Barth"}
     sst = {p: T.read_sst(p) for p in ("darss_ort", "barth", "darss_schwelle")}
+    bodden = T.read_bodden_proxy()
+    for p in T.SITES:
+        T.BLH[p] = T.read_blh(p)
     raw = {p: {m: T.read_prev(p, m) for m in T.MOD} for p in ("darss_ort", "barth", "darss_schwelle")}
     tests = {}
     for site in T.SITES:
         manifest["sites"][site] = {}
-        H = pd.concat([T.features(site, d, raw[site], raw["barth"], raw["darss_schwelle"], sst[site], sst["darss_schwelle"])
+        H = pd.concat([T.features(site, d, raw[site], raw["barth"], raw["darss_schwelle"], sst[site], sst["darss_schwelle"], bodden)
                        for d in T.LEADS])
         H = H.dropna(subset=["models_mean_ws10"])
         sample = H.sample(200, random_state=1)
+        dfe = daily_feats[site]
         tests[site] = {"hourly_rows": sample[hourly_feats].astype(float).where(sample[hourly_feats].notna(), None).values.tolist()}
         for thr in T.THRS:
-            for level, feats in (("hourly", hourly_feats), ("daily", daily_feats)):
+            for level, feats in (("hourly", hourly_feats), ("daily", dfe)):
                 p = f"{MODELS}/{level}7_{site}_{thr}kn.json"
                 c = compact(p)
                 fn = f"{level}_{site}_{thr}.json"
