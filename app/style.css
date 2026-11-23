@@ -162,3 +162,11 @@ code { font-size: 12px; }
 .k4 { background: #c9df52; } .k5 { background: #f4d23f; } .k6 { background: #f3a141; } .k7 { background: #e8644a; color: #fff !important; }
 .k8 { background: #b5306f; color: #fff !important; }
 .p0 { background: #eef3ef; color: #7a8a80 !important; }
+
+/* Sonnenauf-/-untergang als Rahmen der Tageslichtstunden */
+.ftable td.sun { min-width: 38px; vertical-align: middle; background: transparent; border-radius: 6px;
+  font-size: 10px; color: var(--muted); padding: 0 2px; }
+.ftable td.sun span { display: block; }
+.ftable td.sun .sico { font-size: 18px; line-height: 1.3; }
+.ftable td.sun:first-of-type { box-shadow: inset -2px 0 0 #f0b44a; }
+.ftable td.sun:last-of-type { box-shadow: inset 2px 0 0 #e0785a; }

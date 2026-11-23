@@ -357,7 +357,13 @@ function drawDetail() {
   const blocks = ds.map((d, i) => {
     const rare = tooRare(sp, thr);
     const lr = d.local[thr];
-    const cells = (fn) => d.hours.map(fn).join("");
+    const o2 = state.fc.spots[sp.id];
+    const rise = o2.sunrise[d.date], set = o2.sunset[d.date];
+    const hm = s => s ? s.slice(11, 16) : "";
+    const sunL = (first) => first ? `<td class="sun" rowspan="99"><span class="sico">🌅</span><span>${hm(rise)}</span></td>` : "";
+    const sunR = (first) => first ? `<td class="sun" rowspan="99"><span class="sico">🌇</span><span>${hm(set)}</span></td>` : "";
+    let firstRow = true;
+    const cells = (fn) => { const f = firstRow; firstRow = false; return sunL(f) + d.hours.map(fn).join("") + sunR(f); };
     const offCls = h => h.dirMean != null && !inWindow(h.dirMean, sp.win) ? " off" : "";
     const knRow = (m, label) => `<tr class="mrow"><th scope="row">${label}</th>${cells(h => {
       const x = h.models[m]; return `<td class="${knCls(x.kn)}${offCls(h)}">${x.kn == null ? "–" : Math.round(x.kn)}</td>`; })}</tr>`;
