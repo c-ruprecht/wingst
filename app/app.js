@@ -347,6 +347,7 @@ const knCls = kn => { if (kn == null) return "kx"; let c = "k0"; for (const [v, 
 const pCls = p => p == null ? "kx" : p >= 0.75 ? "p4" : p >= P_ON ? "p3" : p >= 0.3 ? "p2" : p >= 0.15 ? "p1" : "p0";
 const cloudIcon = c => c == null ? "" : c < 20 ? "☀" : c < 60 ? "⛅" : "☁";
 
+const sunIcon = up => `<svg class="sico" viewBox="0 0 20 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12a5 5 0 0 1 10 0"/><path d="M2 12h16"/><path d="${up ? "M10 1v4M8 3l2-2 2 2" : "M10 1v4M8 3l2 2 2-2"}"/></svg>`;
 function drawDetail() {
   const box = $("#detail");
   if (!state.fc) { box.innerHTML = ""; return; }
@@ -360,8 +361,8 @@ function drawDetail() {
     const o2 = state.fc.spots[sp.id];
     const rise = o2.sunrise[d.date], set = o2.sunset[d.date];
     const hm = s => s ? s.slice(11, 16) : "";
-    const sunL = (first) => first ? `<td class="sun" rowspan="99"><span class="sico">🌅</span><span>${hm(rise)}</span></td>` : "";
-    const sunR = (first) => first ? `<td class="sun" rowspan="99"><span class="sico">🌇</span><span>${hm(set)}</span></td>` : "";
+    const sunL = (first) => first ? `<td class="sun" rowspan="99" title="Sonnenaufgang">${sunIcon(true)}<span>${hm(rise)}</span></td>` : "";
+    const sunR = (first) => first ? `<td class="sun" rowspan="99" title="Sonnenuntergang">${sunIcon(false)}<span>${hm(set)}</span></td>` : "";
     let firstRow = true;
     const cells = (fn) => { const f = firstRow; firstRow = false; return sunL(f) + d.hours.map(fn).join("") + sunR(f); };
     const offCls = h => h.dirMean != null && !inWindow(h.dirMean, sp.win) ? " off" : "";
