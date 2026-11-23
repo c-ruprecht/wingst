@@ -13,6 +13,8 @@ training/
   train.py                   XGBoost je Station und Schwelle, Jahr-Auslassung, Weglass-Test, SHAP
   forward.py                 Faktorgruppen einzeln zu ICON hinzufügen (AUC-Gewinn)
   satellite.py               Sentinel-1-Wind: Strand- und Boddenfaktoren relativ zu den Stationen
+  train_7day.py              7-Tage-Modell aus früheren Modellläufen (Vorlaufzeit 1–7 Tage):
+                             stündliche Wahrscheinlichkeit + Tageswahrscheinlichkeit „kitebar“
 models/                      trainierte Modelle (XGBoost-JSON) + Merkmalsliste
 results/                     Auswertungen als CSV
 ```
@@ -27,6 +29,7 @@ cd training
 python train.py   ../data ../data/dwd ../results
 python forward.py ../data ../data/dwd ../results
 python satellite.py ../data/sentinel1 ../data/dwd ../results
+python train_7day.py ../data ../data/dwd ../results ../models   # braucht data/openmeteo_prev
 ```
 
 ## Stand (Nov 2026)
@@ -49,7 +52,7 @@ jedes Jahr einmal ausgelassen und getestet.
 
 ## Offene Punkte
 
-- Auswertung nach Vorlaufzeit (Tag 1–7) mit Open-Meteo „Previous Runs“
+- 7-Tage-Modell mit echten Previous-Runs-Daten trainieren (Skript fertig, Daten ab 2024)
 - Höher aufgelöster SAR-Wind (eigene Verarbeitung, ~300 m) für den Barther Bodden
 - PWA unter `app/`: lädt Open-Meteo, DWD (Bright Sky) und DMI im Browser und rechnet das Modell lokal
 

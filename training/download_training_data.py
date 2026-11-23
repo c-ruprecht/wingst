@@ -12,11 +12,12 @@ Aufruf
   python3 download_training_data.py                 # alles
   python3 download_training_data.py --skip openmeteo
   python3 download_training_data.py --only dmi
+  python3 download_training_data.py --only previous_runs   # für das 7-Tage-Modell
   python3 download_training_data.py --only satellite   # nach: copernicusmarine login
 
 Für 1–3 reicht die Python-Standardbibliothek, für 4 das Paket copernicusmarine. Bereits geladene Dateien werden übersprungen,
 ein abgebrochener Lauf kann also einfach neu gestartet werden.
-Ergebnis: Ordner ./data/{openmeteo,dwd,dmi,sentinel1}/
+Ergebnis: Ordner ./data/{openmeteo,openmeteo_prev,dwd,dmi,sentinel1}/
 """
 import argparse, csv, io, json, os, re, time, urllib.error, urllib.parse, urllib.request, zipfile
 
@@ -29,6 +30,7 @@ PLACES = {
     "prerow": (54.452, 12.575), "zingst": (54.445, 12.690),
     "fuhlendorf": (54.385, 12.580), "pruchten": (54.383, 12.660),
     "darss_schwelle": (54.70, 12.70),
+    "born": (54.380, 12.504), "saal": (54.318, 12.478),
 }
 MODELS = ["icon_seamless", "ecmwf_ifs025", "gfs_seamless"]
 OM_HOURLY = ",".join([
@@ -36,6 +38,32 @@ OM_HOURLY = ",".join([
     "temperature_2m", "pressure_msl", "cloud_cover", "shortwave_radiation", "boundary_layer_height",
     "cape", "precipitation", "temperature_850hPa", "wind_speed_850hPa", "wind_direction_850hPa",
 ])
+
+# ---------- 1b. Open-Meteo frühere Läufe (Vorlaufzeit 1–7 Tage) ----------
+PR_PLACES = {k: PLACES[k] for k in ("darss_ort", "barth", "darss_schwelle", "prerow", "zingst",
+                                     "fuhlendorf", "pruchten", "born", "saal")}
+PR_YEARS = [2024, 2025]
+PR_VARS = ["wind_speed_10m", "wind_direction_10m", "wind_gusts_10m", "wind_speed_80m", "temperature_2m",
+           "pressure_msl", "cloud_cover", "shortwave_radiation", "cape", "precipitation"]
+PR_MODEL_VARS = {"icon_seamless": PR_VARS, "gfs_seamless": PR_VARS,
+                 "ecmwf_ifs025": ["wind_speed_10m", "wind_direction_10m", "wind_gusts_10m", "temperature_2m",
+                                  "pressure_msl", "cloud_cover"]}
+
+
+def previous_runs():
+    for name, (lat, lon) in PR_PLACES.items():
+        for y in PR_YEARS:
+            for m, vars_ in PR_MODEL_VARS.items():
+                path = f"{OUT}/openmeteo_prev/{name}_{m}_{y}.csv"
+                if os.path.exists(path):
+                    continue
+                hourly = ",".join(f"{v}_previous_day{d}" for v in vars_ for d in range(1, 8))
+                q = dict(latitude=lat, longitude=lon, start_date=f"{y}-01-01", end_date=f"{y}-12-31",
+                         hourly=hourly, models=m, wind_speed_unit="kn", timezone="UTC")
+                d = get("https://previous-runs-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q))
+                h = d["hourly"]; keys = list(h)
+                write_rows(path, keys, zip(*(h[k] for k in keys))); print(" ", path); time.sleep(2)
+
 
 # ---------- 2. DWD ----------
 DWD_BASE = "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly"
@@ -194,7 +222,7 @@ def dmi():
 
 
 STEPS = {"dwd": lambda: (dwd("wind", DWD_WIND, "wind"), dwd("pressure", DWD_PRESSURE, "pressure")),
-         "dmi": dmi, "openmeteo": openmeteo, "satellite": satellite}
+         "dmi": dmi, "openmeteo": openmeteo, "previous_runs": previous_runs, "satellite": satellite}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
