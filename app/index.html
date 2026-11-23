@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6e8a">
+<title>Wingst – Kitewind Darß, Zingst &amp; Bodden</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Wingst</h1>
+    <span class="sub">Kitewind Darß · Zingst · Bodden</span>
+  </div>
+  <div class="controls">
+    <label class="sel" for="modelSel">Modell
+      <select id="modelSel">
+        <option value="icon">ICON (DWD)</option>
+        <option value="gfs">GFS</option>
+        <option value="ecmwf">ECMWF</option>
+        <option value="mean">Mittel aller drei</option>
+      </select>
+    </label>
+    <button type="button" id="refreshBtn" class="btn">Aktualisieren</button>
+  </div>
+</header>
+
+<main>
+  <p class="status" id="status" role="status">Lade Daten …</p>
+
+  <section class="mapbox" aria-label="Karte">
+    <div id="map"></div>
+    <div class="layer-toggle" role="group" aria-label="Kartenansicht">
+      <button type="button" id="btnMap" class="seg on" aria-pressed="true">Karte</button>
+      <button type="button" id="btnSat" class="seg" aria-pressed="false">Satellit</button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="weekH">
+    <div class="panel-head">
+      <h2 id="weekH">Woche: Stunden am Stück</h2>
+      <div class="thr-toggle" role="group" aria-label="Schwelle">
+        <button type="button" class="seg on" data-thr="12" aria-pressed="true">12+ kn</button>
+        <button type="button" class="seg" data-thr="15" aria-pressed="false">15+ kn</button>
+        <button type="button" class="seg" data-thr="20" aria-pressed="false">20+ kn</button>
+      </div>
+    </div>
+    <div class="weekwrap"><table class="week" id="week"></table></div>
+    <p class="hint">Zahl = längste Zeit am Stück in Stunden, bei Tageslicht, ab der gewählten Schwelle und aus passender Richtung. Grün ab 2 h, dunkelgrün ab 4 h. Wochenende umrandet. Antippen für Details.</p>
+  </section>
+
+  <section class="panel" id="detail" aria-live="polite"></section>
+
+  <section class="panel" id="stations" aria-labelledby="stH"></section>
+
+  <section class="notes">
+    <p>Vorhersage: ICON, GFS und ECMWF über Open-Meteo (unkorrigiert). „Lokal korrigiert“ erscheint, sobald das trainierte Modell unter <code>model/</code> liegt.</p>
+    <p>Messwerte: DWD über Bright Sky, DMI Open Data (CC BY 4.0). Darßer Schwelle: IOW/BSH MARNET. Karte: © OpenStreetMap-Mitwirkende, OpenFreeMap. Satellit: Sentinel-2 cloudless von EOX IT Services GmbH (enthält modifizierte Copernicus-Sentinel-Daten 2020).</p>
+    <p>Im Nationalpark Vorpommersche Boddenlandschaft ist Kiten nur in ausgewiesenen Zonen erlaubt.</p>
+  </section>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="spots.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

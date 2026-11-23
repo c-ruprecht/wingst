@@ -51,18 +51,37 @@ PR_MODEL_VARS = {"icon_seamless": PR_VARS, "gfs_seamless": PR_VARS,
 
 
 def previous_runs():
+    """Monatsweise und in kleinen Variablenpaketen abfragen; Fortschritt anzeigen."""
+    import calendar
     for name, (lat, lon) in PR_PLACES.items():
         for y in PR_YEARS:
             for m, vars_ in PR_MODEL_VARS.items():
                 path = f"{OUT}/openmeteo_prev/{name}_{m}_{y}.csv"
                 if os.path.exists(path):
                     continue
-                hourly = ",".join(f"{v}_previous_day{d}" for v in vars_ for d in range(1, 8))
-                q = dict(latitude=lat, longitude=lon, start_date=f"{y}-01-01", end_date=f"{y}-12-31",
-                         hourly=hourly, models=m, wind_speed_unit="kn", timezone="UTC")
-                d = get("https://previous-runs-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q))
-                h = d["hourly"]; keys = list(h)
-                write_rows(path, keys, zip(*(h[k] for k in keys))); print(" ", path); time.sleep(2)
+                allvars = [f"{v}_previous_day{d}" for v in vars_ for d in range(1, 8)]
+                packs = [allvars[i:i + 14] for i in range(0, len(allvars), 14)]   # 2 Variablen x 7 Tage
+                frames = []
+                for mon in range(1, 13):
+                    last = calendar.monthrange(y, mon)[1]
+                    print(f"  {name} {m} {y}-{mon:02d} ({len(packs)} Pakete) …", end=" ", flush=True)
+                    t0 = time.time(); cols = {}
+                    for pk in packs:
+                        q = dict(latitude=lat, longitude=lon, start_date=f"{y}-{mon:02d}-01",
+                                 end_date=f"{y}-{mon:02d}-{last}", hourly=",".join(pk), models=m,
+                                 wind_speed_unit="kn", timezone="UTC")
+                        h = get("https://previous-runs-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q),
+                                timeout=120)["hourly"]
+                        cols.update(h)
+                        time.sleep(0.5)
+                    frames.append(cols)
+                    print(f"{time.time() - t0:.0f} s", flush=True)
+                keys = ["time"] + allvars
+                rows = []
+                for c in frames:
+                    n = len(c["time"])
+                    rows += zip(*(c.get(k, [None] * n) for k in keys))
+                write_rows(path, keys, rows); print(" ->", path, flush=True)
 
 
 # ---------- 2. DWD ----------
@@ -110,24 +129,26 @@ def satellite():
             print(f"   übersprungen: {e}")
 
 
-def get(url, binary=False, tries=6):
+def get(url, binary=False, tries=6, timeout=180):
     for i in range(tries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "kitewind-training/1.0"})
-            with urllib.request.urlopen(req, timeout=180) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 data = r.read()
             return data if binary else json.loads(data)
         except urllib.error.HTTPError as e:
             if e.code == 429:
                 body = e.read().decode(errors="ignore")
+                print(f"   429: {body[:120]}", flush=True)
                 if "Daily" in body:
                     raise SystemExit("Open-Meteo: Tageslimit erreicht – morgen erneut starten.")
                 print("   Rate-Limit, warte 60 s"); time.sleep(60); continue
             if e.code >= 500 and i < tries - 1:
                 time.sleep(10); continue
             raise
-        except (urllib.error.URLError, TimeoutError):
+        except (urllib.error.URLError, TimeoutError) as e:
             if i < tries - 1:
+                print(f"   ({e.__class__.__name__}, neuer Versuch)", flush=True)
                 time.sleep(10); continue
             raise
 
