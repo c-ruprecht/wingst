@@ -50,14 +50,14 @@ def describe(ds, label):
         print(f"  {v}: dims={ds[v].dims} chunks={getattr(ds[v].data, 'chunksize', None)}")
 
 
-def extract(ds, label, step_days=1, start=START, max_lead_h=None):
+def extract(ds, label, step_days=1, start=START, max_lead_h=None, wind_only=False):
     """Je Station den nächsten Gitterpunkt ziehen, Monat für Monat speichern (Abbruch und Neustart möglich)."""
     d = {k: pick(v, ds.dims) or pick(v, ds.coords) for k, v in DIMS.items()}
     vars_ = {k: pick(v, ds.data_vars) for k, v in NAMES.items()}
     print(label, "Dimensionen:", d, "Variablen:", vars_)
     if not (d["init"] and d["lat"] and d["lon"] and vars_["u10"] and vars_["v10"]):
         raise SystemExit(f"{label}: Aufbau unbekannt – bitte die Ausgabe von --inspect an Claude schicken.")
-    keep = [v for v in vars_.values() if v]
+    keep = [v for k, v in vars_.items() if v and (k in ("u10", "v10") or not wind_only)]
     lon_vals = ds[d["lon"]].values
     os.makedirs(OUT, exist_ok=True)
     for site, (lat, lon) in SITES.items():
@@ -66,11 +66,10 @@ def extract(ds, label, step_days=1, start=START, max_lead_h=None):
         inits = pd.to_datetime(pt[d["init"]].values)
         inits = inits[(inits >= start) & (inits.hour == 0)]           # nur 00-UTC-Läufe
         months = sorted(set(inits.to_period("M")))
-        parts = []
-        for m in months:
+        def one(m):
             fn = f"{OUT}/.part_{label}_{site}_{m}.csv.gz"
             if os.path.exists(fn):
-                parts.append(fn); continue
+                return fn
             sel = inits[inits.to_period("M") == m][::step_days]
             t0 = time.time()
             sub = pt.sel({d["init"]: sel})
@@ -89,12 +88,21 @@ def extract(ds, label, step_days=1, start=START, max_lead_h=None):
                 df["lead_h"] = pd.to_timedelta(df["lead"]).dt.total_seconds() / 3600 if not np.issubdtype(df["lead"].dtype, np.number) else df["lead"]
                 df = df.drop(columns="lead")
             cols = [c for c in ["init_time", "lead_h", "member", "u10", "v10", "t2m", "msl"] if c in df]
-            df[cols].to_csv(fn, index=False, compression="gzip")
-            parts.append(fn)
+            df[cols].to_csv(fn + ".tmp", index=False, compression="gzip")
+            os.replace(fn + ".tmp", fn)          # halbe Dateien nach Abbruch werden nicht mitgezählt
             print(f"  {label} {site} {m}: {len(df)} Zeilen, {time.time() - t0:.0f} s", flush=True)
+            return fn
+
+        # mehrere Monate gleichzeitig laden (Netzwerk ist der Engpass)
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(WORKERS) as ex:
+            parts = list(ex.map(one, months))
         out = f"{OUT}/{label}_{site}.csv.gz"
         pd.concat([pd.read_csv(p) for p in parts]).to_csv(out, index=False, compression="gzip")
         print("  ->", out)
+
+
+WORKERS = int(os.environ.get("WORKERS", "6"))
 
 
 def open_dynamical(name):
@@ -143,7 +151,7 @@ def ens(inspect=False):
         if inspect:
             describe(ds, label)
         else:
-            extract(ds, label, start="2024-04-01", max_lead_h=360)
+            extract(ds, label, start="2024-04-01", max_lead_h=360, wind_only=True)
 
 
 def wn2(inspect=False):
