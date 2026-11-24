@@ -42,12 +42,12 @@ def main():
     # 1. Ensembles: eine Anfrage je Standort und Modell (hält die Antworten klein)
     for site, (lat, lon) in SITES.items():
         buf = io.StringIO(); w = csv.writer(buf)
-        w.writerow(["model", "member", "var"] + ["t%d" % h for h in range(168)])
+        w.writerow(["model", "member", "var", "werte stündlich ab time0 (UTC), 15 Tage"])
         times = None
         for m in ENS:
             r = get(q("https://ensemble-api.open-meteo.com/v1/ensemble", latitude=lat, longitude=lon,
                       hourly="wind_speed_10m,wind_direction_10m", models=m, wind_speed_unit="kn",
-                      timezone="UTC", forecast_days=7))
+                      timezone="UTC", forecast_days=15))
             h = r["hourly"]; times = times or h["time"]
             for k, arr in h.items():
                 if k == "time":

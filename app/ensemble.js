@@ -38,7 +38,7 @@ const WingstEns = (() => {
     const p = new URLSearchParams({
       latitude: SITES.map(s => s.lat).join(","), longitude: SITES.map(s => s.lon).join(","),
       hourly: "wind_speed_10m,wind_direction_10m", models: MODELS.map(m => m.id).join(","),
-      wind_speed_unit: "kn", timezone: "Europe/Berlin", forecast_days: "7"
+      wind_speed_unit: "kn", timezone: "Europe/Berlin", forecast_days: "15"
     });
     let res = await fetchJSON("https://ensemble-api.open-meteo.com/v1/ensemble?" + p, 60000);
     if (res && res.error) throw new Error(res.reason || "Ensemble-Fehler");

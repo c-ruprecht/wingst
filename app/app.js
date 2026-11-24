@@ -484,7 +484,62 @@ function drawStations() {
 }
 
 /* ---------- Ablauf ---------- */
-function renderAll() { drawWeek(); drawDetail(); drawStations(); drawMarkers(); }
+/* ---------- Woche 2: Tendenz Tag 8–14 nur aus Ensembles (IFS, AIFS, WeatherNext 2 reichen 15 Tage, GEFS 10) ---------- */
+const ALL_DIRS = [0, 360];
+let CLIMATE = null;   // kitebare Tage je Monat, gemessen 2016–2025 (analyse.json)
+function longDays() {
+  const ens = state.ens?.darss_ort;
+  if (!ens || !state.fc) return [];
+  const last = state.fc.spots[SPOTS[0].id];
+  const knownDays = Object.keys(last.sunrise).sort();
+  const lastDay = knownDays[knownDays.length - 1];
+  const [h0, h1] = daylightHours(last, lastDay);          // Tageslicht des letzten bekannten Tages weiterverwenden
+  const days = [...new Set(ens.time.map(t => t.slice(0, 10)))].filter(d => d > lastDay).slice(0, 7);
+  return days.map(d => [d, Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i)]);
+}
+function longProb(site, win, hb) {
+  try { return WingstEns.probabilities(state.ens[site], state.ensBias?.[site], win, new Map(hb), THRESHOLDS, MIN_RUN, inWindow); }
+  catch (e) { console.warn("Woche 2", e); return null; }
+}
+function drawLong() {
+  const box = $("#long");
+  const hb = longDays();
+  if (!hb.length) { box.innerHTML = ""; return; }
+  const thr = state.thr;
+  const head = hb.map(([d]) => { const x = new Date(d + "T12:00:00");
+    return `<th scope="col" class="${isWeekend(d) ? "we" : ""}">${x.toLocaleDateString("de-DE", { weekday: "short" })}<br><small>${x.getDate()}.${x.getMonth() + 1}.</small></th>`; }).join("");
+  const cell = (p, d) => `<td class="cell ${p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0"}${isWeekend(d) ? " we" : ""}"><span class="v">${p == null ? "·" : Math.round(p * 100)}</span></td>`;
+  // je Station ohne Richtungsfilter – vergleichbar mit dem Klima der Messstation
+  const summary = [];
+  let rows = "";
+  for (const [site, lab] of [["darss_ort", "Ostsee"], ["barth", "Bodden"]]) {
+    if (site === "barth" && thr >= 20) continue;
+    const P = longProb(site, ALL_DIRS, hb); if (!P) continue;
+    const ps = hb.map(([d]) => P.daily[d]?.[thr]?.p ?? null);
+    const valid = ps.filter(p => p != null);
+    const exp = valid.reduce((a, b) => a + b, 0);
+    const clim = CLIMATE?.[site]?.[thr] ? hb.reduce((s, [d]) => s + CLIMATE[site][thr][Number(d.slice(5, 7)) - 1], 0) : null;
+    if (valid.length) summary.push({ lab, exp, clim, n: valid.length });
+    rows += `<tr class="stn"><th scope="row">${lab}<br><small>alle Richtungen</small></th>${ps.map((p, i) => cell(p, hb[i][0])).join("")}</tr>`;
+  }
+  for (const sp of SPOTS) {
+    if (tooRare(sp, thr)) continue;
+    const P = longProb(siteOf(sp), sp.win, hb); if (!P) continue;
+    rows += `<tr><th scope="row">${sp.short}</th>${hb.map(([d]) => cell(P.daily[d]?.[thr]?.p ?? null, d)).join("")}</tr>`;
+  }
+  const verdict = s => {
+    if (s.clim == null) return `${s.lab}: erwartet ${s.exp.toFixed(1).replace(".", ",")} kitebare Tage`;
+    const r = s.exp / Math.max(s.clim, 0.1);
+    const word = r >= 1.25 ? "<b>windiger als üblich</b>" : r <= 0.75 ? "<b>ruhiger als üblich</b>" : "etwa wie üblich";
+    return `${s.lab}: ${word} – erwartet ${s.exp.toFixed(1).replace(".", ",")} kitebare Tage, üblich ${s.clim.toFixed(1).replace(".", ",")}`;
+  };
+  box.innerHTML = `<div class="panel-head"><h2 id="longH">Woche 2: Tendenz</h2><span class="meta">${thr}+ kn · nur Ensembles</span></div>
+    ${summary.length ? `<p class="longsum">${summary.map(verdict).join("<br>")}</p>` : ""}
+    <div class="weekwrap"><table class="week long"><thead><tr><th scope="col" class="spotcol">Spot</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="hint">Zahl: Anteil der Ensemble-Läufe (ECMWF IFS, AIFS, WeatherNext 2, ab Tag 10 ohne GEFS) mit mindestens ${MIN_RUN} h am Stück ab ${thr} kn, richtungskorrigiert. Einzelne Tage sind so weit voraus nicht vorhersagbar – lies die Zeile als Wetterlage: viele grüne Felder = windige Westwindphase. „Üblich“: gemessen 2016–2025 an der Station im selben Monat. Noch nicht an alten Vorhersagen geprüft.</p>`;
+}
+
+function renderAll() { drawWeek(); drawLong(); drawDetail(); drawStations(); drawMarkers(); }
 
 function selectSpot(id) {
   state.spot = id; save("spot", id); renderAll();
@@ -543,6 +598,7 @@ function init() {
   if (window.maplibregl) initMap();
   else $("#map").innerHTML = '<p class="maperr">Karte nicht verfügbar (offline).</p>';
   renderAll();
+  fetchJSON("analyse.json").then(j => { CLIMATE = j.climate; drawLong(); }).catch(() => {});
   fetchJSON("model/ens_bias.json").then(b => { state.ensBias = b; state.ensCache = {}; renderAll(); }).catch(e => console.warn("Ensemble-Korrektur", e));
   loadLocalModel()
     .then(m => { state.model = m; recomputeLocal(); renderAll();

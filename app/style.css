@@ -225,3 +225,7 @@ main.an { grid-template-columns: minmax(0, 1fr); }
 .mcard dt { color: var(--muted); font-size: 12px; padding-top: 2px; }
 .mcard dd { margin: 0; }
 .nav a { white-space: nowrap; }
+
+.longsum { margin: 0; font-size: 14px; }
+.week.long tr.stn th, .week.long tr.stn td { border-bottom: 2px solid var(--line); }
+.week.long th small { font-weight: 400; color: var(--muted); font-size: 10px; }
