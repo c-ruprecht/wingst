@@ -143,7 +143,7 @@ const WingstModel = (() => {
 
   const vec = (row, feats) => feats.map(f => (row[f] === undefined ? null : row[f]));
 
-  return { predictProba, hourlyFeatures, dailyFeatures, vec, boddenProxy };
+  return { predictMargin, predictProba, hourlyFeatures, dailyFeatures, vec, boddenProxy };
 })();
 
 if (typeof module !== "undefined") module.exports = WingstModel;

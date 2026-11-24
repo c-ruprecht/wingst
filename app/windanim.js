@@ -52,7 +52,7 @@ const WingstWind = (() => {
     field = { time, T, raw: { u, v, s } }; fetchedAt = Date.now();
     if (grid === null) grid = await fetch("model/wind_grid.json").then(r => r.ok ? r.json() : false).catch(() => false);
     field.cor = grid ? correct(field.raw, T) : null;
-    pick();
+    pick(); localFactors();
     const now = new Date(), key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:00`;
     hour = Math.max(0, time.indexOf(key)); frac = 0;
     return field;
@@ -81,6 +81,38 @@ const WingstWind = (() => {
     const w = gy < 0 || gx < 0 ? null : grid.water[gy][gx];
     return w == null ? true : w >= 0.25;                  // außerhalb der Satellitenkarte: offene See, zählt als Wasser
   };
+  /* Lokale Korrektur aus dem Windstärke-Modell: je Stunde ein Faktor für die Ostsee (Darßer Ort) und einer für
+     den Bodden (Barth). Die Trennlinie läuft grob über Fischland, Darß und Zingst; dazwischen 1 km weich überblendet. */
+  const COAST = [[12.30, 54.30], [12.40, 54.37], [12.47, 54.42], [12.52, 54.43], [12.57, 54.44], [12.65, 54.435],
+                 [12.75, 54.43], [13.00, 54.43]];
+  function seaWeight(lon, lat) {
+    let la = COAST[COAST.length - 1][1];
+    for (let i = 1; i < COAST.length; i++) if (lon <= COAST[i][0]) {
+      const [a, ya] = COAST[i - 1], [b, yb] = COAST[i]; la = ya + (yb - ya) * (Math.max(lon, a) - a) / (b - a); break;
+    }
+    let w = Math.min(1, Math.max(0, 0.5 + (lat - la) / 0.018));
+    if (lat < 54.38) w = Math.max(w, Math.min(1, Math.max(0, 0.5 + (12.37 + (lat - 54.30) * 0.43 - lon) / 0.03)));  // Ostsee westlich Fischland
+    return w;
+  }
+  let LF = null;                                          // {darss_ort: Float32Array(T), barth: Float32Array(T)}
+  function localFactors() {
+    LF = null;
+    const src = opts.localFactor ? opts.localFactor() : null;
+    if (!src || !field) return;
+    LF = {};
+    for (const site of ["darss_ort", "barth"]) {
+      const a = new Float32Array(field.T).fill(1), m = src[site];
+      if (m) field.time.forEach((t, i) => { if (m[t] != null) a[i] = m[t]; });
+      LF[site] = a;
+    }
+  }
+  function localAt(lon, lat) {
+    if (!LF || !corr) return 1;
+    const t1 = Math.min(field.T - 1, hour + 1), w = seaWeight(lon, lat);
+    const d = LF.darss_ort[hour] * (1 - frac) + LF.darss_ort[t1] * frac, b = LF.barth[hour] * (1 - frac) + LF.barth[t1] * frac;
+    return d * w + b * (1 - w);
+  }
+
   function pick() { const src = corr && field.cor ? field.cor : field.raw; field.u = src.u; field.v = src.v; field.s = src.s; }
   function thrColor(kn) { const [a, b] = THR(); return kn >= b ? "#e0362a" : kn >= a ? "#f5922c" : "#4a86d8"; }
 
@@ -96,7 +128,8 @@ const WingstWind = (() => {
       return (a00 * (1 - dx) + a10 * dx) * (1 - dy) + (a01 * (1 - dx) + a11 * dx) * dy;
     };
     const mix = arr => at(arr, hour) * (1 - frac) + at(arr, t1) * frac;
-    return [mix(field.u), mix(field.v), mix(field.s)];
+    const r = localAt(lon, lat);
+    return [mix(field.u) * r, mix(field.v) * r, mix(field.s) * r];
   }
 
   /* ---------- Zeichnen ---------- */
@@ -173,19 +206,24 @@ const WingstWind = (() => {
     $("#windTime").value = hour;
     $("#windLabel").textContent = label(field.time[hour]);
     const info = opts.spotInfo ? opts.spotInfo(field.time[hour]) : [];
+    // Knoten an den Spots aus dem (korrigierten) Feld, damit Chips und Animation dasselbe zeigen
+    for (const i of info) { const f = i.lat != null ? sample(i.lon, i.lat) : null; if (f) i.kn = f[2]; }
     $("#windSpots").innerHTML = info.map(i => `<span class="wchip" style="--c:${i.kn != null ? colorOf(i.kn) : "transparent"}"><b>${i.name}</b> ${i.kn != null ? Math.round(i.kn) + " kn" : "–"}${i.p != null ? ` · ${Math.round(i.p * 100)} %` : ""}</span>`).join("");
   }
   function syncModes() {
     const [a, b] = THR();
     $("#windMode").textContent = mode === "thr" ? `Farbe: Stufen ${a}/${b} kn` : "Farbe: fließend";
-    $("#windCorr").textContent = corr ? "Satellitenkorrektur an" : "ICON roh";
-    $("#windCorr").hidden = grid === false;
+    const what = [grid ? "Satellit" : null, LF ? "lokales Modell" : null].filter(Boolean).join(" + ");
+    $("#windCorr").textContent = corr ? `Korrektur: ${what}` : "ICON roh";
+    $("#windCorr").hidden = !what;
     $("#windCorr").classList.toggle("on", corr);
     $("#windLegend").innerHTML = mode === "thr"
       ? `<span style="--c:#4a86d8;color:#fff">unter ${a}</span><span style="--c:#f5922c">ab ${a}</span><span style="--c:#e0362a;color:#fff">ab ${b} kn</span>`
       : `<span class="grad"></span><small>0</small><small style="margin-left:auto">${a}</small><small style="margin-left:auto">${b}</small><small style="margin-left:auto">28 kn</small>`;
-    $("#windNote").textContent = corr && grid ? `Windfeld: ICON, über Wasser mit Satellitenfaktoren je Windrichtung korrigiert (${grid.quelle}).`
-      : grid === false ? "Windfeld: ICON, unkorrigiert (Satellitenfaktoren noch nicht berechnet)." : "Windfeld: ICON, unkorrigiert.";
+    const parts = [];
+    if (corr && grid) parts.push(`über Wasser mit Satellitenfaktoren je Windrichtung (${grid.quelle})`);
+    if (corr && LF) parts.push("mit dem lokalen Windstärke-Modell an Darßer Ort und Barth verschoben (Ostsee bzw. Bodden)");
+    $("#windNote").textContent = parts.length ? `Windfeld: ICON, ${parts.join(", ")}.` : "Windfeld: ICON, unkorrigiert.";
   }
 
   function setPlay(v) {
@@ -231,5 +269,5 @@ const WingstWind = (() => {
     if (loadPref("wind") === "1") toggle(true).then(() => { if (!reduce) setPlay(false); });
   }
 
-  return { init, refresh: () => on && syncBar() };
+  return { init, refresh: () => { if (on && field) { localFactors(); syncModes(); syncBar(); } } };
 })();

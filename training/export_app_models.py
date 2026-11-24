@@ -19,7 +19,7 @@ def f32(x):
     return float(np.float32(x))
 
 
-def compact(path):
+def compact(path, logistic=True):
     m = json.load(open(path))
     L = m["learner"]
     base = float(L["learner_model_param"]["base_score"].strip("[]"))
@@ -28,7 +28,8 @@ def compact(path):
         left = t["left_children"]
         trees.append([t["split_indices"], [f32(v) for v in t["split_conditions"]], left, t["right_children"],
                       t["default_left"]])
-    return {"base": float(np.log(base / (1 - base))), "trees": trees}
+    # Klassifikator: base_score ist eine Wahrscheinlichkeit -> Logit; Regressor (Knoten): base_score direkt
+    return {"base": float(np.log(base / (1 - base))) if logistic else base, "trees": trees}
 
 
 def main():
@@ -60,6 +61,22 @@ def main():
                 manifest["sites"][site].setdefault(level, {})[str(thr)] = fn
             m = xgb.XGBClassifier(); m.load_model(f"{MODELS}/hourly7_{site}_{thr}kn.json")
             tests[site][f"hourly_p{thr}"] = m.predict_proba(sample[hourly_feats])[:, 1].round(6).tolist()
+    # Windstärke-Modelle (train_speed.py), falls vorhanden: Knoten je Stunde, gleiche Merkmale wie „hourly“
+    import os
+    if os.path.exists(f"{MODELS}/speed7_ref.json"):
+        manifest["speed"] = {}
+        manifest["speed_ref"] = json.load(open(f"{MODELS}/speed7_ref.json"))
+        for site in T.SITES:
+            p = f"{MODELS}/speed7_{site}.json"
+            if not os.path.exists(p):
+                continue
+            fn = f"speed_{site}.json"
+            json.dump(compact(p, logistic=False), open(f"{OUT}/{fn}", "w"), separators=(",", ":"))
+            manifest["speed"][site] = fn
+            m = xgb.XGBRegressor(); m.load_model(p)
+            sample_rows = np.array(tests[site]["hourly_rows"], dtype=float)
+            tests[site]["speed_kn"] = m.predict(sample_rows).round(4).tolist()
+        print("Windstärke-Modelle:", ", ".join(manifest["speed"]))
     json.dump(manifest, open(f"{OUT}/manifest.json", "w"), indent=1)
     json.dump(tests, open(f"/tmp/model_parity.json", "w"))
     print("exportiert nach", OUT)

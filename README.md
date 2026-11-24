@@ -32,6 +32,7 @@ python train.py   ../data ../data/dwd ../results
 python forward.py ../data ../data/dwd ../results
 python satellite.py ../data/sentinel1 ../data/dwd ../results
 python train_7day.py ../data ../data/dwd ../results ../models   # braucht data/openmeteo_prev
+python train_speed.py ../data ../data/dwd ../results ../models  # Windstärke in kn (für die Windanimation), vor export_app_models.py
 python sar_grid_factors.py   # Satellitenfaktoren je Gitterpunkt/Richtung für die Windanimation -> app/model/wind_grid.json
 python netatmo_wind.py --find --history --check   # private Netatmo-Windmesser am Bodden finden und gegen Barth prüfen
 python import_uba_zingst.py <UBA-Lieferung.zip>   # UBA Zingst 2016–25 -> data/uba, Vergleich -> results/uba_zingst_vergleich.csv

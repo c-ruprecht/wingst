@@ -198,6 +198,10 @@ async function loadLocalModel() {
       }
     }
   }
+  // Windstärke-Modelle (Knoten je Stunde, train_speed.py) – optional, nur für die Windanimation
+  out.speed = {}; out.speedRef = man.speed_ref || {};
+  for (const [site, file] of Object.entries(man.speed || {}))
+    jobs.push(fetchJSON("model/" + file, 60000).then(m => { out.speed[site] = m; }).catch(() => {}));
   await Promise.all(jobs);
   return out;
 }
@@ -225,6 +229,10 @@ function computeLocal() {
         day[d.date] = calibrate(M.calib?.[site]?.[String(thr)], WingstModel.predictProba(dm, WingstModel.vec(d.x, dfeats)), ld);
       }
       out[site][thr] = { p, day, time: S.time };
+    }
+    if (M.speed && M.speed[site]) {
+      const kn = rows.map(r => WingstModel.predictMargin(M.speed[site], WingstModel.vec(r, M.manifest.hourly_features)));
+      out[site].speed = { kn, icon: S.icon.ws, ref: M.speedRef[site] ?? 1, time: S.time };
     }
   }
   return out;
@@ -351,18 +359,35 @@ function initMap() {
     map.addLayer({ id: "s2", type: "raster", source: "s2", layout: { visibility: "none" } }, firstSymbol && firstSymbol.id);
     WingstDepth.add(map, firstSymbol && firstSymbol.id);
     if (load("layer", "map") === "sat") setLayer("sat");
-    WingstWind.init(map, { spotInfo: windSpotInfo, thresholds: THRESHOLDS });
+    WingstWind.init(map, { spotInfo: windSpotInfo, localFactor: windLocalFactor, thresholds: THRESHOLDS });
   });
   state.map = map;
 }
 
-/* Werte je Spot zur Stunde der Windanimation: Wind des gewählten Modells und lokale Chance */
+/* Werte je Spot zur Stunde der Windanimation: Lage, Wind des gewählten Modells und lokale Chance */
 function windSpotInfo(t) {
   if (!state.fc) return [];
   return SPOTS.map(sp => {
     const h = days(sp.id).flatMap(d => d.hours).find(x => x.t === t);
-    return { name: sp.short, kn: h ? h.models[state.modelSel]?.kn ?? null : null, p: h && h.p ? h.p[state.thr] ?? null : null };
+    return { name: sp.short, lat: sp.lat, lon: sp.lon, kn: h ? h.models[state.modelSel]?.kn ?? null : null,
+             p: h && h.p ? h.p[state.thr] ?? null : null };
   });
+}
+/* Verhältnis lokales Windstärke-Modell / (ICON × typischer Bezug) je Station und Stunde:
+   1,15 heißt „heute 15 % mehr Wind, als ICON an dieser Station sonst bedeutet“. Ohne Modell: null */
+function windLocalFactor() {
+  const L = state.local; if (!L) return null;
+  const out = {};
+  for (const [site, v] of Object.entries(L)) {
+    const s = v.speed; if (!s) continue;
+    const map = {};
+    s.time.forEach((t, i) => {
+      const ic = s.icon[i], kn = s.kn[i];
+      map[t] = ic != null && ic >= 4 && kn != null ? Math.min(1.6, Math.max(0.6, kn / (ic * s.ref))) : 1;
+    });
+    out[site] = map;
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 function setLayer(which) {
