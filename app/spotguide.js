@@ -22,6 +22,7 @@ function initMap() {
       attribution: "Sentinel-2 cloudless – https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2020)" });
     const firstSymbol = map.getStyle().layers.find(l => l.type === "symbol");
     map.addLayer({ id: "s2", type: "raster", source: "s2", layout: { visibility: "none" } }, firstSymbol && firstSymbol.id);
+    WingstDepth.add(map, firstSymbol && firstSymbol.id);
   });
   for (const sp of SPOTS) {
     const el = document.createElement("button");
@@ -163,6 +164,7 @@ function select(id, scroll) {
 function init() {
   $("#btnMap").addEventListener("click", () => setLayer("map"));
   $("#btnSat").addEventListener("click", () => setLayer("sat"));
+  WingstDepth.bind(() => map);
   const pick = document.createElement("div");
   pick.className = "spotpick";
   pick.innerHTML = SPOTS.map(s => `<button type="button" class="seg" data-id="${s.id}">${s.short}</button>`).join("");

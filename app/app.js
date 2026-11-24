@@ -349,36 +349,10 @@ function initMap() {
       attribution: "Sentinel-2 cloudless – https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2020)" });
     const firstSymbol = map.getStyle().layers.find(l => l.type === "symbol");
     map.addLayer({ id: "s2", type: "raster", source: "s2", layout: { visibility: "none" } }, firstSymbol && firstSymbol.id);
-    addDepthLayers(map, firstSymbol && firstSymbol.id);
+    WingstDepth.add(map, firstSymbol && firstSymbol.id);
     if (load("layer", "map") === "sat") setLayer("sat");
-    setDepth(load("depth", "1") === "1");
   });
   state.map = map;
-}
-
-/* Tiefen aus dem BSH-Geländemodell (training/depth_layer.py → depth.geojson) */
-const DEPTH_LAYERS = ["depth-zone", "depth-line", "depth-line3", "depth-rinne"];
-function addDepthLayers(map, before) {
-  map.addSource("depth", { type: "geojson", data: "depth.geojson",
-    attribution: "Tiefen: BSH, Digitales Geländemodell 50 m" });
-  map.addLayer({ id: "depth-zone", type: "fill", source: "depth", filter: ["==", ["get", "art"], "zone"],
-    paint: { "fill-color": ["match", ["get", "klasse"], "stehtief", "#f2b84b", "#f7e3a1"],
-             "fill-opacity": ["match", ["get", "klasse"], "stehtief", 0.6, 0.5] } }, before);
-  map.addLayer({ id: "depth-line", type: "line", source: "depth",
-    filter: ["all", ["==", ["get", "art"], "linie"], ["==", ["get", "tiefe"], 2]],
-    paint: { "line-color": "#2b6c8f", "line-opacity": 0.7, "line-width": 1.1 } }, before);
-  map.addLayer({ id: "depth-line3", type: "line", source: "depth",
-    filter: ["all", ["==", ["get", "art"], "linie"], ["==", ["get", "tiefe"], 3]],
-    paint: { "line-color": "#2b6c8f", "line-opacity": 0.6, "line-width": 0.7, "line-dasharray": [3, 2] } }, before);
-  map.addLayer({ id: "depth-rinne", type: "fill", source: "depth", filter: ["==", ["get", "art"], "rinne"],
-    paint: { "fill-color": "#0b2a6b", "fill-opacity": 0.75 } }, before);
-}
-function setDepth(on) {
-  save("depth", on ? "1" : "0");
-  $("#btnDepth").classList.toggle("on", on); $("#btnDepth").setAttribute("aria-pressed", on);
-  $("#depthLegend").hidden = !on;
-  const m = state.map;
-  if (m) DEPTH_LAYERS.forEach(id => m.getLayer(id) && m.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
 }
 
 function setLayer(which) {
@@ -641,7 +615,7 @@ function init() {
   $("#refreshBtn").addEventListener("click", refresh);
   $("#btnMap").addEventListener("click", () => setLayer("map"));
   $("#btnSat").addEventListener("click", () => setLayer("sat"));
-  $("#btnDepth").addEventListener("click", () => setDepth(load("depth", "1") !== "1"));
+  WingstDepth.bind(() => state.map);
   try {
     const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
     if (c && c.fc && c.fc.sites) { state.fc = c.fc; state.obs = c.obs || {}; }

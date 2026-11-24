@@ -33,6 +33,13 @@
     <div class="layer-toggle" role="group" aria-label="Kartenansicht">
       <button type="button" id="btnMap" class="seg on" aria-pressed="true">Karte</button>
       <button type="button" id="btnSat" class="seg" aria-pressed="false">Satellit</button>
+      <button type="button" id="btnDepth" class="seg depth-btn" aria-pressed="true">Tiefe</button>
+    </div>
+    <div class="depth-legend" id="depthLegend" aria-label="Legende Wassertiefe">
+      <span><i class="sw st"></i>unter 0,8 m</span>
+      <span><i class="sw fl"></i>0,8–1,5 m</span>
+      <span><i class="ln"></i>2 m <i class="ln d"></i>3 m</span>
+      <span><i class="sw ri"></i>Fahrrinne</span>
     </div>
   </section>
   <p class="hint" id="pick">Spot auf der Karte antippen.</p>
@@ -41,13 +48,14 @@
 
   <section class="notes">
     <p>Kiten ist im gesamten Nationalpark Vorpommersche Boddenlandschaft verboten (einzige Ausnahme: Suhrendorf auf Ummanz). Die Spots liegen am Rand, also Grenzen, Schilfufer und Badezonen beachten. <a href="https://www.nationalpark-vorpommersche-boddenlandschaft.de/en/experience-recuperate/out-and-about-in-nature/on-the-water/surfing-and-kitesurfing" target="_blank" rel="noopener">Regeln des Nationalparks</a>.</p>
-    <p>Richtungen, Böigkeit und Welle: eigene Auswertung von 439 Sentinel-1-Radarbildern 2024–25 (Copernicus). Parken und Gastronomie: OpenStreetMap, live abgefragt. Karte © OpenStreetMap-Mitwirkende, OpenFreeMap.</p>
+    <p>Richtungen, Böigkeit und Welle: eigene Auswertung von 439 Sentinel-1-Radarbildern 2024–25 (Copernicus). Parken und Gastronomie: OpenStreetMap, live abgefragt. Karte © OpenStreetMap-Mitwirkende, OpenFreeMap. Wassertiefen: BSH, Digitales Geländemodell 50 m, bezogen auf Mittelwasser – keine Navigationsgrundlage (<a href="modelle.html">Tiefenmodell</a>).</p>
   </section>
 </main>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="spots.js"></script>
 <script src="spotinfo.js"></script>
 <script src="charts.js"></script>
+<script src="depth.js"></script>
 <script src="spotguide.js"></script>
 </body>
 </html>
