@@ -81,7 +81,12 @@ def token():
     return t["access_token"]
 
 
-def api(path, params, tries=4):
+class Unavailable(Exception):
+    pass
+
+
+def api(path, params, tries=6):
+    last = None
     for i in range(tries):
         url = f"{API}/api/{path}?" + urllib.parse.urlencode(params)
         req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token()}"})
@@ -93,14 +98,17 @@ def api(path, params, tries=4):
             if e.code == 429 or "limit" in body.lower():          # 50 Anfragen / 10 s, 500 / h
                 wait = 60 * (i + 1)
                 print(f"    Netatmo-Limit erreicht, warte {wait} s …"); time.sleep(wait); continue
+            if e.code >= 500:                                     # Netatmo überlastet (z. B. 503, Code 27)
+                last = f"{e.code}"; wait = 10 * (i + 1)
+                print(f"    Netatmo {e.code}, neuer Versuch in {wait} s …"); time.sleep(wait); continue
             if e.code in (401, 403) and i == 0:
                 if os.path.exists(TOKEN_FILE):
                     s = json.load(open(TOKEN_FILE)); s["expires_at"] = 0; json.dump(s, open(TOKEN_FILE, "w"))
                 continue
-            raise SystemExit(f"Netatmo {path} {e.code}: {body}")
+            raise Unavailable(f"{e.code}: {body}")   # z. B. Station nicht freigegeben -> überspringen
         except (urllib.error.URLError, TimeoutError) as e:
             time.sleep(5 * (i + 1)); last = e
-    raise SystemExit(f"Netatmo {path}: keine Antwort ({last})")
+    raise Unavailable(f"Netatmo {path}: keine Antwort ({last})")
 
 
 def km(a, b):
@@ -133,12 +141,17 @@ def parse_public(body):
 def find():
     # Ausschnitt in Kacheln teilen: getpublicdata liefert pro Anfrage nur eine begrenzte Zahl von Stationen
     lats = np.linspace(BBOX["lat_sw"], BBOX["lat_ne"], 4); lons = np.linspace(BBOX["lon_sw"], BBOX["lon_ne"], 5)
-    parts = []
+    parts, missed = [], 0
     for a, b in zip(lats[:-1], lats[1:]):
         for c, d in zip(lons[:-1], lons[1:]):
-            r = api("getpublicdata", dict(lat_sw=a, lon_sw=c, lat_ne=b, lon_ne=d, required_data="wind", filter="false"))
+            try:
+                r = api("getpublicdata", dict(lat_sw=a, lon_sw=c, lat_ne=b, lon_ne=d, required_data="wind", filter="false"))
+            except Unavailable as e:
+                print(f"  Kachel {a:.2f}–{b:.2f} N, {c:.2f}–{d:.2f} O übersprungen: {e}"); missed += 1; continue
             parts.append(parse_public(r.get("body", [])))
-            time.sleep(0.3)
+            time.sleep(1)
+    if missed:
+        print(f"  {missed} von 12 Kacheln fehlen – später einfach --find noch einmal starten.")
     df = pd.concat(parts).drop_duplicates("station") if parts else pd.DataFrame()
     if df.empty:
         print("Keine öffentlichen Netatmo-Windmesser im Ausschnitt gefunden."); return
@@ -161,9 +174,12 @@ def history(days):
         t0 = int(have.time.max().timestamp()) + 3600 if len(have) else start
         rows = []
         while t0 < end:
-            r = api("getmeasure", dict(device_id=s.station, module_id=s.wind_module, scale="1hour",
+            try:
+                r = api("getmeasure", dict(device_id=s.station, module_id=s.wind_module, scale="1hour",
                                        type="WindStrength,WindAngle,GustStrength", date_begin=t0, date_end=end,
                                        optimize="false", real_time="true"))
+            except Unavailable as e:
+                print(f"  {s.station}: abgebrochen ({e}), beim nächsten Lauf geht es hier weiter"); break
             body = r.get("body") or {}
             if not body:
                 break
