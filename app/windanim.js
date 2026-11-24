@@ -1,5 +1,5 @@
 /* Windanimation auf der Karte: stündliches Windfeld (ICON über Open-Meteo, ~3 km Gitter) als wandernde Partikel
-   wie bei Windfinder, dazu eine leichte Farbfläche nach Windstärke und ein Zeitregler für die nächsten 7 Tage.
+   wie bei Windfinder, Linien von Blau nach Rot eingefärbt, und ein Zeitregler für die nächsten 7 Tage.
    Das Feld ist das unkorrigierte Modell; die Spot-Chips unter dem Regler zeigen dazu die lokale Chance je Spot.
 
    WingstWind.init(map, { spotInfo(tIso) -> [{name, kn, p}], thresholds: [14, 18] })  – einmal nach dem Laden der Karte
@@ -9,9 +9,18 @@ const WingstWind = (() => {
   for (let la = 54.26; la <= 54.561; la += 0.03) LATS.push(+la.toFixed(3));
   for (let lo = 12.30; lo <= 12.981; lo += 0.05) LONS.push(+lo.toFixed(3));
   const NY = LATS.length, NX = LONS.length;
-  const COLORS = [[0, "#9ecae1"], [6, "#4fb3d9"], [9, "#3cbf8a"], [12, "#9bd34a"], [15, "#f2d33b"],
-                  [18, "#f59a2c"], [21, "#e8503a"], [25, "#b23a8c"], [30, "#6b2a8f"]];
-  const colorOf = kn => { let c = COLORS[0][1]; for (const [v, k] of COLORS) if (kn >= v) c = k; return c; };
+  /* Linienfarbe von Blau (wenig Wind) nach Rot (viel Wind), fließend; Gelb liegt bei der Kite-Schwelle 14 kn */
+  const STOPS = [[0, [59, 111, 209]], [6, [47, 163, 224]], [10, [54, 195, 192]], [14, [242, 211, 59]],
+                 [18, [245, 130, 44]], [22, [224, 54, 42]], [28, [163, 22, 95]]];
+  const colorOf = kn => {
+    if (kn <= STOPS[0][0]) return `rgb(${STOPS[0][1]})`;
+    for (let i = 1; i < STOPS.length; i++) if (kn <= STOPS[i][0]) {
+      const [a, ca] = STOPS[i - 1], [b, cb] = STOPS[i], f = (kn - a) / (b - a);
+      return `rgb(${ca.map((c, k) => Math.round(c + (cb[k] - c) * f)).join(",")})`;
+    }
+    return `rgb(${STOPS[STOPS.length - 1][1]})`;
+  };
+  const BG = false;                                     // Farbfläche unter den Linien (Quadrate je Gitterpunkt)
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let map, opts, field = null, fetchedAt = 0, on = false, playing = false;
@@ -73,7 +82,7 @@ const WingstWind = (() => {
     return w == null ? true : w >= 0.25;                  // außerhalb der Satellitenkarte: offene See, zählt als Wasser
   };
   function pick() { const src = corr && field.cor ? field.cor : field.raw; field.u = src.u; field.v = src.v; field.s = src.s; }
-  function thrColor(kn) { const [a, b] = THR(); return kn >= b ? "#0f7a3c" : kn >= a ? "#39b86b" : null; }
+  function thrColor(kn) { const [a, b] = THR(); return kn >= b ? "#e0362a" : kn >= a ? "#f5922c" : "#4a86d8"; }
 
   /* bilinear im Gitter, linear zwischen zwei Stunden */
   function sample(lon, lat) {
@@ -100,7 +109,7 @@ const WingstWind = (() => {
   function drawBg() {
     const w = bg.clientWidth, h = bg.clientHeight;
     bctx.clearRect(0, 0, w, h);
-    if (!field) return;
+    if (!field || !BG) return;                            // Farbfläche aus: nur die Linien werden gefärbt
     const t1 = Math.min(field.T - 1, hour + 1);
     bctx.globalAlpha = mode === "thr" ? 0.42 : 0.28;
     const hx = (LONS[1] - LONS[0]) / 2, hy = (LATS[1] - LATS[0]) / 2;
@@ -140,14 +149,14 @@ const WingstWind = (() => {
     fctx.globalCompositeOperation = "destination-in";
     fctx.fillStyle = "rgba(0,0,0,0.9)"; fctx.fillRect(0, 0, w, h);
     fctx.globalCompositeOperation = "source-over";
-    fctx.lineWidth = 1.6; fctx.lineCap = "round";
+    fctx.lineWidth = 2.2; fctx.lineCap = "round";
     const z = map.getZoom(), k = 0.1 * Math.pow(2, (z - 9.6) * 0.5);        // Pixel je Knoten und Bild: 15 kn ≈ 1,5 px
     for (const p of parts) {
       if (--p.age < 0 || p.x < 0 || p.y < 0 || p.x > w || p.y > h) { seed(p); p.age = 60 + Math.random() * 60; continue; }
       const ll = map.unproject([p.x, p.y]), f = sample(ll.lng, ll.lat);
       if (!f) { seed(p); continue; }
       const nx = p.x + f[0] * k, ny = p.y - f[1] * k;
-      fctx.strokeStyle = mode === "thr" ? (thrColor(f[2]) || "rgba(40,60,70,.55)") : colorOf(f[2]);
+      fctx.strokeStyle = mode === "thr" ? thrColor(f[2]) : colorOf(f[2]);
       fctx.beginPath(); fctx.moveTo(p.x, p.y); fctx.lineTo(nx, ny); fctx.stroke();
       p.x = nx; p.y = ny;
     }
@@ -168,13 +177,13 @@ const WingstWind = (() => {
   }
   function syncModes() {
     const [a, b] = THR();
-    $("#windMode").textContent = mode === "thr" ? `Farbe: ab ${a}/${b} kn` : "Farbe: Knoten";
+    $("#windMode").textContent = mode === "thr" ? `Farbe: Stufen ${a}/${b} kn` : "Farbe: fließend";
     $("#windCorr").textContent = corr ? "Satellitenkorrektur an" : "ICON roh";
     $("#windCorr").hidden = grid === false;
     $("#windCorr").classList.toggle("on", corr);
     $("#windLegend").innerHTML = mode === "thr"
-      ? `<span style="--c:#39b86b">ab ${a}</span><span style="--c:#0f7a3c;color:#fff">ab ${b} kn</span> auf dem Wasser`
-      : `<span style="--c:#4fb3d9">6</span><span style="--c:#3cbf8a">9</span><span style="--c:#9bd34a">12</span><span style="--c:#f2d33b">15</span><span style="--c:#f59a2c">18</span><span style="--c:#e8503a">21</span><span style="--c:#b23a8c">25+</span> kn`;
+      ? `<span style="--c:#4a86d8;color:#fff">unter ${a}</span><span style="--c:#f5922c">ab ${a}</span><span style="--c:#e0362a;color:#fff">ab ${b} kn</span>`
+      : `<span class="grad"></span><small>0</small><small style="margin-left:auto">${a}</small><small style="margin-left:auto">${b}</small><small style="margin-left:auto">28 kn</small>`;
     $("#windNote").textContent = corr && grid ? `Windfeld: ICON, über Wasser mit Satellitenfaktoren je Windrichtung korrigiert (${grid.quelle}).`
       : grid === false ? "Windfeld: ICON, unkorrigiert (Satellitenfaktoren noch nicht berechnet)." : "Windfeld: ICON, unkorrigiert.";
   }

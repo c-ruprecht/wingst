@@ -316,3 +316,7 @@ svg.chart.dirs .petal { fill: #0b6e8a; }
 .wind-opts { margin-top: 6px; flex-wrap: wrap; }
 .btn.small { font-size: 12px; padding: 3px 8px; }
 .btn.small.on { border-color: var(--accent); color: var(--accent); }
+.wind-legend .grad { position: absolute; left: 6px; right: 6px; top: 3px; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, rgb(59,111,209) 0%, rgb(47,163,224) 21%, rgb(54,195,192) 36%, rgb(242,211,59) 50%, rgb(245,130,44) 64%, rgb(224,54,42) 79%, rgb(163,22,95) 100%); }
+.wind-legend:has(.grad) { position: absolute; width: 170px; padding-top: 12px; display: flex; }
+.wind-legend small { font-size: 10px; }
