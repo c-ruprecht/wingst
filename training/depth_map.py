@@ -6,7 +6,7 @@ und davon die Szenen mit dem klarsten Wasser,
 rechnet vier Varianten einer "Flachheit" und baut eine Vergleichsseite je Spot.
 
 Aufruf (aus dem Repo-Ordner):
-    python training/depth_map.py                       # Standard: Winter (Nov–März), vorher 36 h ≤ 10 kn, 10 klarste Tage
+    python training/depth_map.py                       # Standard: Winter (Nov–März), vorher 36 h ≤ 10 kn, 15 klarste Tage
     python training/depth_map.py --max-wind 8 --calm-hours 48 --scenes 6
     python training/depth_map.py --months alle --max-wind 0    # ohne Saison- und Windfilter
     python training/depth_map.py --skip-download       # nur neu rechnen/zeichnen aus data/depth/szenen/
@@ -160,7 +160,8 @@ def screen(items, n_scenes, months, calm_hours, max_wind):
     rows.insert(1, "wasser_anteil", nw / nw.quantile(0.9))
     if max_wind is not None:
         rows = add_wind(rows, calm_hours)
-    ok = rows[(rows.wasser_anteil > 0.85) & (rows.wolke < 0.02) & (rows.eis < 0.01)].dropna(subset=["rot_wasser"])
+    ok = rows[(rows.wasser_anteil > 0.85) & (rows.wolke < 0.02) & (rows.eis < 0.01)
+              & (rows.rot_wasser > 0.002)].dropna(subset=["rot_wasser"])   # <= 0: Kalibrier-/Versatzfehler der Szene
     print(f"{len(ok)} wolken- und eisfreie Tage")
     if max_wind is not None:
         calm = ok[ok.wind_max_kn <= max_wind]
@@ -439,8 +440,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", default=f"{ROOT}/data/depth")
     ap.add_argument("--years", default=f"2018-{dt.date.today().year}")
-    ap.add_argument("--scenes", type=int, default=10, help="Anzahl klarster Tage für den Median")
-    ap.add_argument("--max-cloud", type=float, default=20, help="max. Wolken je Kachel in %%")
+    ap.add_argument("--scenes", type=int, default=15, help="Anzahl klarster Tage für den Median")
+    ap.add_argument("--max-cloud", type=float, default=60,
+                    help="max. Wolken je ganzer Kachel (110 km) in %%; ob der Bodden selbst frei ist, prüft die Vorauswahl")
     ap.add_argument("--months", default="11,12,1,2,3",
                     help="nur diese Monate (Winter: wenig Algen); 'alle' für das ganze Jahr")
     ap.add_argument("--max-wind", type=float, default=10,
