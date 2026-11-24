@@ -11,9 +11,9 @@ from features import build, GROUPS, YEARS
 OM_ROOT, DWD_ROOT, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 PARAMS = dict(n_estimators=500, max_depth=5, learning_rate=0.04, subsample=0.8, colsample_bytree=0.8,
               min_child_weight=5, reg_lambda=1.0, tree_method="hist", eval_metric="logloss", n_jobs=8)
-THRESHOLDS = (12, 15)
+THRESHOLDS = (14, 18)   # 14 kn = kitebar, 18 kn = stark (Wind auf dem Wasser, wie train_7day.py und App)
 
-df = build(OM_ROOT, DWD_ROOT)
+df = build(OM_ROOT, DWD_ROOT, water=True)
 FEATS = [c for c in df.columns if c not in ("obs_kn", "site", "year", "daylight")]
 print("Zeilen je Standort/Jahr:\n", df.groupby(["site", "year"]).size().unstack())
 

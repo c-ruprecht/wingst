@@ -111,7 +111,8 @@ def load_obs(dwd_root, site):
     return (d["F"] * MS2KN * HEIGHT_FACTOR[site]).rename("obs_kn")
 
 
-def build(om_root, dwd_root):
+def build(om_root, dwd_root, water=False):
+    """water=True: Messung in Wind auf dem Wasser umrechnen (Barth x water_factor), wie im 7-Tage-Modell."""
     ctx_raw = {p: model_frame(om_root, p) for p in ("barth", "darss_schwelle")}
     ctx = pd.DataFrame({
         "barth_t2m": ctx_raw["barth"]["icon_temperature_2m"],
@@ -124,7 +125,7 @@ def build(om_root, dwd_root):
         mf = model_frame(om_root, site)
         X = add_derived(mf, ctx.reindex(mf.index))
         y = load_obs(dwd_root, site).reindex(X.index)
-        X["obs_kn"] = y
+        X["obs_kn"] = y * water_factor(site, X.index) if water else y
         X["site"] = site
         frames.append(X)
     df = pd.concat(frames)
