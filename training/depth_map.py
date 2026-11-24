@@ -9,7 +9,11 @@ Aufruf (aus dem Repo-Ordner):
     python training/depth_map.py                       # Standard: Winter (Nov–März), vorher 36 h ≤ 10 kn, 10 klarste Tage
     python training/depth_map.py --max-wind 8 --calm-hours 48 --scenes 6
     python training/depth_map.py --months alle --max-wind 0    # ohne Saison- und Windfilter
-    python training/depth_map.py --skip-download       # nur neu rechnen/zeichnen aus data/depth/stack.nc
+    python training/depth_map.py --skip-download       # nur neu rechnen/zeichnen aus data/depth/szenen/
+    python training/depth_map.py --res 20 --threads 1  # wenig Speicher / langsames Netz
+
+Speicher: jeder Tag wird einzeln geladen, ausgewertet und nach data/depth/szenen/*.npz geschrieben (Neustart
+setzt dort fort). Spitze bei 10 m etwa 2–3 GB, bei --res 20 unter 1 GB.
 
 Ergebnis in data/depth/ (nicht im Repo):
     vergleich.html          Spots x Varianten nebeneinander, im Browser öffnen
@@ -131,19 +135,27 @@ def screen(items, n_scenes, months, calm_hours, max_wind):
     if months:
         items = [it for it in items if it.datetime.month in months]
         print(f"{len(items)} Kacheln in den Monaten {sorted(months)}")
-    print("Vorauswahl bei 60 m …")
-    ds = load(items, ["red", "scl"], 60).compute()
-    scl = ds.scl
-    water = scl == SCL_WATER
-    nwater = water.sum(["x", "y"])
-    ref = float(nwater.quantile(0.9))
-    rows = pd.DataFrame({
-        "time": pd.to_datetime(ds.time.values),
-        "wasser_anteil": (nwater / ref).values,
-        "wolke": scl.isin(SCL_CLOUD).mean(["x", "y"]).values,
-        "eis": (scl == SCL_ICE).mean(["x", "y"]).values,
-        "rot_wasser": ds.red.where(water).median(["x", "y"]).values,
-    })
+    days = sorted({pd.Timestamp(it.datetime).tz_localize(None).normalize() for it in items})
+    print(f"Vorauswahl bei 60 m: {len(days)} Tage in Paketen zu 25 …")
+    parts = []
+    for i in range(0, len(days), 25):
+        batch = set(days[i:i + 25])
+        sub = [it for it in items if pd.Timestamp(it.datetime).tz_localize(None).normalize() in batch]
+        ds = load(sub, ["red", "scl"], 60).compute()
+        scl = ds.scl
+        water = scl == SCL_WATER
+        parts.append(pd.DataFrame({
+            "time": pd.to_datetime(ds.time.values),
+            "nwasser": water.sum(["x", "y"]).values,
+            "wolke": scl.isin(SCL_CLOUD).mean(["x", "y"]).values,
+            "eis": (scl == SCL_ICE).mean(["x", "y"]).values,
+            "rot_wasser": ds.red.where(water).median(["x", "y"]).values,
+        }))
+        print(f"  {min(i + 25, len(days))}/{len(days)}", flush=True)
+        del ds, scl, water
+    rows = pd.concat(parts, ignore_index=True)
+    nw = rows.pop("nwasser")
+    rows.insert(1, "wasser_anteil", nw / nw.quantile(0.9))
     if max_wind is not None:
         rows = add_wind(rows, calm_hours)
     ok = rows[(rows.wasser_anteil > 0.85) & (rows.wolke < 0.02) & (rows.eis < 0.01)].dropna(subset=["rot_wasser"])
@@ -162,38 +174,81 @@ def screen(items, n_scenes, months, calm_hours, max_wind):
     return rows, pick
 
 
-def load_full(items, days):
-    keep = [it for it in items if pd.Timestamp(it.datetime).tz_localize(None).normalize() in set(days)]
-    print(f"Lade {len(days)} Tage bei 10 m ({len(keep)} Kacheln) …")
-    return load(keep, BANDS, 10).compute()
-
-
-# ---------------------------------------------------------------- Varianten
-
-def water_mask(ds):
-    ndwi = (ds.green - ds.nir) / (ds.green + ds.nir)
-    sclw = (ds.scl == SCL_WATER).mean("time")
+def scene_layers(ds1):
+    """Eine Szene -> Zwischenebenen (alles, was danach nur noch einen Median über die Tage braucht)."""
+    clear = ~ds1.scl.isin(SCL_CLOUD + (SCL_ICE,))
+    b, g, r = (ds1[k].where(clear).clip(min=1e-4) for k in ("blue", "green", "red"))
+    ndwi = (ds1.green - ds1.nir) / (ds1.green + ds1.nir)
+    sclw = (ds1.scl == SCL_WATER)
     # flaches helles Wasser landet in SCL manchmal nicht als "Wasser" -> NDWI zusätzlich
-    return ((ndwi.median("time") > 0.05) | (sclw > 0.5)) & (ds.nir.median("time") < 0.06)
-
-
-def variants(ds):
-    """Gibt je Variante eine 'Flachheit' zurück: größer = flacher (noch nicht normiert)."""
-    clear = ~ds.scl.isin(SCL_CLOUD + (SCL_ICE,))
-    b, g, r = (ds[k].where(clear).clip(min=1e-4) for k in ("blue", "green", "red"))
+    wm = ((ndwi > 0.05) | sclw) & (ds1.nir < 0.06) & clear
     n = 1000.0
-    wm = water_mask(ds)
+    deep = float(g.where(wm).quantile(0.05))        # dunkelste 5 % des Boddens = tiefes Wasser
+    med = float(g.where(wm).median())
+    out = xr.Dataset({
+        # A/B: Verhältnis steigt mit der Tiefe -> Vorzeichen drehen (größer = flacher)
+        "A": -(np.log(n * b) / np.log(n * g)),
+        "B": -(np.log(n * g) / np.log(n * r)),
+        # C: Lyzenga, heller als tiefes Wasser = flacher
+        "C": np.log((g - deep).clip(min=1e-4)),
+        # D: Grund "scheint durch", wenn Grün deutlich über dem Boddenmedian der Szene liegt
+        "D": (g > med * 1.35).where(g.notnull()),
+        "ndwi": ndwi, "nir": ds1.nir, "sclw": sclw.astype("float32"),
+        "red": ds1.red, "green": ds1.green, "blue": ds1.blue,
+    })
+    return out.astype("float32").drop_vars("quantile", errors="ignore")
+
+
+LAYERS = ["A", "B", "C", "D", "ndwi", "nir", "sclw", "red", "green", "blue"]
+
+
+def scene_file(out, day):
+    return f"{out}/szenen/{pd.Timestamp(day):%Y%m%d}.npz"
+
+
+def load_scenes(items, days, out, res):
+    """Tag für Tag laden und auswerten, Ergebnis je Tag auf die Platte – hält den Speicher klein.
+    Schon vorhandene Tage werden übersprungen (Abbruch und Neustart sind kein Problem)."""
+    import gc
+    os.makedirs(f"{out}/szenen", exist_ok=True)
+    for i, day in enumerate(days, 1):
+        f = scene_file(out, day)
+        if os.path.exists(f):
+            print(f"[{i}/{len(days)}] {day:%d.%m.%Y} schon da"); continue
+        keep = [it for it in items if pd.Timestamp(it.datetime).tz_localize(None).normalize() == day]
+        print(f"[{i}/{len(days)}] {day:%d.%m.%Y}: lade {len(keep)} Kachel(n) bei {res} m …", flush=True)
+        ds1 = load(keep, BANDS, res).isel(time=0).compute()
+        lay = scene_layers(ds1)
+        with open(f + ".tmp", "wb") as fh:   # NumPy-Format: braucht keine NetCDF-Bibliothek
+            np.savez_compressed(fh, x=lay.x.values, y=lay.y.values, **{v: lay[v].values for v in LAYERS})
+        os.replace(f + ".tmp", f)
+        del ds1, lay; gc.collect()
+
+
+def median_layer(files, name):
+    """Median einer Ebene über alle Tage, eine Ebene nach der anderen (≈ Tage × 30 MB im Speicher)."""
+    stack = []
+    for f in files:
+        with np.load(f) as z:
+            if not stack:
+                x, y = z["x"], z["y"]
+            stack.append(z[name])
+    stack = np.stack(stack)
+    with np.errstate(all="ignore"):
+        m = np.nanmean(stack, axis=0) if name == "D" else np.nanmedian(stack, axis=0)
+    del stack
+    return xr.DataArray(m.astype("float32"), dims=("y", "x"), coords={"y": y, "x": x}).odc.assign_crs(CRS)
+
+
+def variants(files):
+    """Gibt je Variante eine 'Flachheit' zurück: größer = flacher (noch nicht normiert)."""
+    ndwi, sclw, nir = (median_layer(files, k) for k in ("ndwi", "sclw", "nir"))
+    wm = ((ndwi > 0.05) | (sclw > 0.5)) & (nir < 0.06)
+    del ndwi, sclw, nir
     out = {}
-    # A/B: Verhältnis steigt mit der Tiefe -> Vorzeichen drehen
-    out["A"] = -(np.log(n * b) / np.log(n * g)).median("time")
-    out["B"] = -(np.log(n * g) / np.log(n * r)).median("time")
-    # C: Lyzenga, tiefes Wasser = dunkelste 5 % des Boddens je Szene
-    deep = g.where(wm).quantile(0.05, dim=["x", "y"])
-    out["C"] = np.log((g - deep).clip(min=1e-4)).median("time")
-    # D: Grund "scheint durch", wenn Grün deutlich über dem Boddenmedian der Szene liegt
-    med = g.where(wm).median(["x", "y"])
-    out["D"] = (g > med * 1.35).where(g.notnull()).mean("time")
-    out = {k: v.where(wm).drop_vars("quantile", errors="ignore").astype("float32") for k, v in out.items()}
+    for k in ("A", "B", "C", "D"):
+        print(f"Variante {k} …", flush=True)
+        out[k] = median_layer(files, k).where(wm)
     # Im trüben Bodden ist nicht sicher, in welche Richtung die Verhältnisse A/B mit der Tiefe laufen.
     # Richtung daher an C ausrichten (heller Grund = flach ist physikalisch eindeutig).
     ref = out["C"].values.ravel()
@@ -202,7 +257,8 @@ def variants(ds):
         if ok.sum() > 100 and np.corrcoef(a[ok], ref[ok])[0, 1] < 0:
             out[k] = -out[k]
             print(f"Variante {k}: Richtung umgedreht (passt so zu heller = flach)")
-    return out, wm
+    rgb = xr.Dataset({k: median_layer(files, k) for k in ("red", "green", "blue")})
+    return out, wm, rgb
 
 
 def normalize(v, wm):
@@ -271,8 +327,7 @@ def png(arr, cmap, vmin=0, vmax=1, size=None, marker=None):
 
 
 def truecolor(ds):
-    rgb = xr.concat([ds.red, ds.green, ds.blue], "band").median("time")
-    a = np.moveaxis(rgb.values, 0, -1)
+    a = np.stack([ds.red.values, ds.green.values, ds.blue.values], -1)
     a = np.clip(a / np.nanpercentile(a, 99), 0, 1) ** 0.7     # Wasser aufhellen
     return np.nan_to_num(a, nan=0.85)
 
@@ -294,7 +349,7 @@ def depth_cmap():
 def page(ds, flat, wm, cal, picked, out):
     cmap = depth_cmap()
     tc = truecolor(ds)
-    tcx = xr.DataArray(np.moveaxis(tc, -1, 0), dims=("band", "y", "x"), coords={"y": ds.y, "x": ds.x})
+    tcx = xr.DataArray(np.moveaxis(tc, -1, 0), dims=("band", "y", "x"), coords={"y": ds.y.values, "x": ds.x.values})
     norm = {k: normalize(v, wm) for k, v in flat.items()}
     cols = [("tc", "Satellitenbild (Median)")] + [(k, VARIANTS[k]) for k in flat]
     if cal:
@@ -375,13 +430,15 @@ def main():
     ap.add_argument("--max-wind", type=float, default=10,
                     help="max. Wind (kn) in den Stunden vor dem Überflug; 0 = kein Windfilter")
     ap.add_argument("--calm-hours", type=int, default=36, help="so viele Stunden vorher windstill")
-    ap.add_argument("--skip-download", action="store_true", help="vorhandenes stack.nc verwenden")
+    ap.add_argument("--res", type=int, default=10, help="Auflösung in m (20 halbiert Zeit und Speicher grob auf 1/4)")
+    ap.add_argument("--threads", type=int, default=2, help="parallele Lese-Threads (wenig RAM: 1–2)")
+    ap.add_argument("--skip-download", action="store_true",
+                    help="nur neu rechnen/zeichnen aus data/depth/szenen/ (z. B. nach neuen Tiefenpunkten)")
     a = ap.parse_args()
+    import dask
+    dask.config.set(scheduler="threads", num_workers=a.threads)
     os.makedirs(a.out, exist_ok=True)
-    stack = f"{a.out}/stack.nc"
     if a.skip_download:
-        ds = xr.open_dataset(stack).load()
-        ds = ds.odc.assign_crs(CRS)
         picked = pd.read_csv(f"{a.out}/szenen.csv", parse_dates=["time"])
     else:
         y0, y1 = (int(x) for x in a.years.split("-"))
@@ -392,17 +449,16 @@ def main():
         allrows, picked = screen(items, a.scenes, months, a.calm_hours, a.max_wind or None)
         allrows.to_csv(f"{a.out}/alle_tage.csv", index=False)
         picked.to_csv(f"{a.out}/szenen.csv", index=False)
-        ds = load_full(items, list(pd.to_datetime(picked.time).dt.normalize()))
-        try:
-            ds.to_netcdf(stack)
-        except ValueError as e:   # kein netCDF4/h5netcdf/scipy installiert
-            print(f"Hinweis: Zwischenspeicher {stack} nicht geschrieben ({e}).\n"
-                  "  --skip-download geht erst nach:  mamba install -c conda-forge netcdf4")
-    flat, wm = variants(ds)
+        load_scenes(items, list(pd.to_datetime(picked.time).dt.normalize()), a.out, a.res)
+    files = [scene_file(a.out, d) for d in pd.to_datetime(picked.time).dt.normalize()]
+    files = [f for f in files if os.path.exists(f)]
+    if not files:
+        sys.exit("Keine Szenen in data/depth/szenen/ – erst ohne --skip-download laufen lassen.")
+    flat, wm, rgb = variants(files)
     cal = calibrate(flat, f"{a.out}/tiefenpunkte.csv")
     template(a.out)
     write_tifs(flat, wm, cal, a.out)
-    page(ds, flat, wm, cal, picked, a.out)
+    page(rgb, flat, wm, cal, picked, a.out)
 
 
 if __name__ == "__main__":
