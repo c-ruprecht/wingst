@@ -274,6 +274,8 @@ a.btn { display: inline-block; text-decoration: none; margin-top: 6px; }
 
 /* Woche: Klammer über den Tagen – lokales Modell / Ensemble */
 .week tr.band th { padding: 0 2px 2px; }
+.week tr.band th.grp { text-align: left; vertical-align: bottom; font-size: 11px; font-weight: 600; color: var(--muted); padding: 8px 4px 2px; }
+.week tbody tr.band:first-child th.grp { padding-top: 2px; }
 .week tr.band th span { display: block; border: 1.5px solid var(--muted); border-bottom: 0; border-radius: 6px 6px 0 0; height: 14px;
   font-size: 10px; line-height: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .week tr.band th.split span { border-color: var(--accent); color: var(--accent); }

@@ -414,9 +414,16 @@ function drawWeek() {
     return `<th scope="col" class="${isWeekend(d.date) ? "we" : ""}">${wd}<br><small>${x.getDate()}.${x.getMonth() + 1}.</small></th>`;
   };
   let html = `<thead><tr><th scope="col" class="spotcol">Spot</th>${ref.map(head).join("")}</tr></thead><tbody>`;
+  /* Klammer „Lokales Modell | Ensemble“ je Gebiet, weil der Wechsel an der Ostsee später kommt als am Bodden */
+  const GROUP = { darss_ort: "Ostsee", barth: "Bodden" };
+  let lastSite = null;
   for (const sp of SPOTS) {
     const ds = days(sp.id);
-    const nLoc = ds.filter((d, i) => useLocal(i, sp)).length;
+    const nLoc = ds.filter((d, i) => useLocal(i, sp)).length, nEns = ds.length - nLoc;
+    if (siteOf(sp) !== lastSite) {
+      lastSite = siteOf(sp);
+      html += `<tr class="band"><th class="spotcol grp">${GROUP[lastSite] || ""}</th>${nLoc ? `<th colspan="${nLoc}"><span>Lokales Modell</span></th>` : ""}${nEns ? `<th colspan="${nEns}" class="split"><span>Ensemble</span></th>` : ""}</tr>`;
+    }
     html += `<tr class="${sp.id === state.spot ? "cur" : ""}"><th scope="row"><button type="button" class="linkbtn" data-spot="${sp.id}">${sp.short}</button></th>`;
     ds.forEach((d, i) => {
       const we = isWeekend(d.date) ? " we" : "", split = i === nLoc && nLoc ? " split" : "";
