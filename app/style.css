@@ -294,3 +294,22 @@ svg.chart.box .pt.last { fill: var(--accent); fill-opacity: 1; stroke: #fff; str
 svg.chart.dirs { display: block; margin-top: 4px; }
 svg.chart.dirs .rose-bg { fill: none; stroke: var(--line); stroke-width: .6; }
 svg.chart.dirs .petal { fill: #0b6e8a; }
+.bestdir td { font-size: 13px; line-height: 1.3; }
+.bestdir td small { font-size: 11px; color: var(--muted); }
+.bestdir td.dna { color: var(--muted); font-size: 12px; }
+
+/* Windanimation */
+.wind-canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
+.wind-legend { position: absolute; right: 10px; bottom: 26px; z-index: 2; display: flex; gap: 2px; align-items: center;
+  background: var(--card); border-radius: 6px; padding: 3px 6px; font-size: 11px; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.wind-legend[hidden] { display: none; }
+.wind-legend span { background: var(--c); color: #15232a; border-radius: 3px; padding: 0 4px; font-weight: 600; }
+.wind-bar { margin: 8px 0 0; }
+.wind-bar[hidden] { display: none; }
+.wind-row { display: flex; align-items: center; gap: 8px; }
+.wind-row input[type=range] { flex: 1; min-width: 120px; }
+.wind-label { font-variant-numeric: tabular-nums; min-width: 9.5em; font-size: 14px; }
+#windPlay { min-width: 40px; }
+.wind-spots { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
+.wchip { font-size: 12px; border-left: 4px solid var(--c); background: var(--card); border-radius: 4px; padding: 1px 6px;
+  border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }

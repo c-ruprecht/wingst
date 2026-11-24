@@ -351,8 +351,18 @@ function initMap() {
     map.addLayer({ id: "s2", type: "raster", source: "s2", layout: { visibility: "none" } }, firstSymbol && firstSymbol.id);
     WingstDepth.add(map, firstSymbol && firstSymbol.id);
     if (load("layer", "map") === "sat") setLayer("sat");
+    WingstWind.init(map, { spotInfo: windSpotInfo });
   });
   state.map = map;
+}
+
+/* Werte je Spot zur Stunde der Windanimation: Wind des gewählten Modells und lokale Chance */
+function windSpotInfo(t) {
+  if (!state.fc) return [];
+  return SPOTS.map(sp => {
+    const h = days(sp.id).flatMap(d => d.hours).find(x => x.t === t);
+    return { name: sp.short, kn: h ? h.models[state.modelSel]?.kn ?? null : null, p: h && h.p ? h.p[state.thr] ?? null : null };
+  });
 }
 
 function setLayer(which) {
@@ -576,7 +586,7 @@ function drawLong() {
     <p class="hint">Anteil der Ensemble-Läufe mit mind. ${MIN_RUN} h ab ${thr} kn, alle Richtungen. Einzelne Tage sind so weit voraus nicht vorhersagbar, die Zeile zeigt die Wetterlage. „Üblich“: gemessen 2016–2025 im selben Monat.</p>`;
 }
 
-function renderAll() { drawWeek(); drawLong(); drawDetail(); drawStations(); drawMarkers(); }
+function renderAll() { drawWeek(); drawLong(); drawDetail(); drawStations(); drawMarkers(); if (typeof WingstWind !== "undefined") WingstWind.refresh(); }
 
 function selectSpot(id) {
   state.spot = id; save("spot", id); renderAll();

@@ -124,6 +124,46 @@ function drawDirs() {
   put("#dirs", h + `</tbody></table><p class="hint">Grün: gleichmäßiger Wind, je dunkler desto sauberer. Grau: ablandig, oder zu wenige Bilder. Welle: über 30 cm bei 15 kn, Kabbel: 15–30 cm, flach: darunter (aus der freien Wasserstrecke gerechnet, nicht gemessen). Fahrt bei ablandigem Wind nur mit Begleitung.</p>`);
 }
 
+/* ---------- Bester Spot je Windrichtung (aus DIRS: Satellitenfaktor, Streuung, Uferlage, Welle) ---------- */
+const SECT_LONG = { N: "Nord", NO: "Nordost", O: "Ost", SO: "Südost", S: "Süd", SW: "Südwest", W: "West", NW: "Nordwest" };
+const AREA = { Bodden: ["born", "saal", "pruchten", "dabitz"], Ostsee: ["prerow", "zingst"] };
+function drawBestDir() {
+  if (!DIRS) return;
+  const usable = r => r && r.faktor != null && r.n >= 6 && !r.ufer.includes("ab");
+  const fx = (v, ref) => `${v >= 1 ? "+" : ""}${Math.round((v - 1) * 100)} % zu ${ref}`;
+  const clean = u => u <= 5 ? "sehr gleichmäßig" : u <= 8 ? "gleichmäßig" : "unruhig";
+  let h = `<table class="atab bestdir"><thead><tr><th>Wind aus</th><th>Bodden</th><th>Ostsee</th></tr></thead><tbody>`;
+  const lines = [];
+  for (const s of SECT) {
+    h += `<tr><th>${SECT_LONG[s]}</th>`;
+    for (const [area, spots] of Object.entries(AREA)) {
+      const ref = area === "Bodden" ? "Barth" : "Darßer Ort";
+      const c = spots.map(sp => DIRS.find(x => x.spot === sp && x.sektor === s)).filter(usable)
+        .sort((a, b) => b.faktor - a.faktor);
+      if (!c.length) { h += `<td class="dna">kein Spot passt</td>`; continue; }
+      const best = c[0], calm = [...c].sort((a, b) => a.unruhe - b.unruhe)[0];
+      const close = c.slice(1).filter(r => r.faktor >= best.faktor * 0.95);       // innerhalb 5 % gleich stark
+      const cls = best.unruhe <= 5 ? "q3" : best.unruhe <= 8 ? "q2" : "q1";
+      h += `<td class="${cls}" title="${c.map(r => `${SPOT_NAME[r.spot]}: ${fx(r.faktor, ref)}, ${r.ufer}, Streuung ${r.unruhe} %, Welle ~${r.welle_cm} cm, ${r.n} Bilder`).join("\n")}">
+        <b>${SPOT_NAME[best.spot]}</b>${close.length ? ` <small>≈ ${close.map(r => SPOT_NAME[r.spot]).join(", ")}</small>` : ""}
+        <br><small>${fx(best.faktor, ref)} · ${clean(best.unruhe)}${calm.spot !== best.spot ? ` · am saubersten: ${SPOT_NAME[calm.spot]}` : ""}</small></td>`;
+      if (area === "Bodden") {
+        let t = `<b>${SECT_LONG[s]}:</b> am Bodden ist ${SPOT_NAME[best.spot]} am stärksten (${fx(best.faktor, ref)}, ${best.ufer}, ${clean(best.unruhe)}`;
+        t += best.welle_cm >= 30 ? ", mit Welle)" : best.welle_cm >= 15 ? ", Kabbelwasser)" : ", flaches Wasser)";
+        if (close.length) t += `, ${close.map(r => SPOT_NAME[r.spot]).join(" und ")} fast gleich`;
+        if (calm.spot !== best.spot && calm.unruhe < best.unruhe - 1) t += `. Am gleichmäßigsten weht es in ${SPOT_NAME[calm.spot]} (${fx(calm.faktor, ref)})`;
+        lines.push(t + ".");
+      }
+    }
+    h += "</tr>";
+  }
+  put("#bestdir", h + `</tbody></table>
+    <ul class="tips">${lines.map(l => `<li>${l}</li>`).join("")}</ul>
+    <p class="hint">Stärke: Median aus Wind auf dem Wasser geteilt durch die Messung in Barth (Bodden) bzw. am Darßer Ort (Ostsee). Die beiden Spalten haben deshalb verschiedene Bezüge, am Darßer Ort weht es ohnehin rund 40 % mehr als in Barth.
+    Gleichmäßigkeit: wie stark der Wind im Umkreis von 1,5 km schwankt (sehr gleichmäßig bis 5 %, unruhig über 8 %). Böen misst der Satellit nicht direkt, starke räumliche Unruhe heißt aber meist auch böiger Wind, etwa im Windschatten von Wald oder Ort.
+    Die Bilder entstehen gegen 6 und 18 Uhr, Mittagsthermik ist nicht enthalten. Mit der Maus über einer Zelle stehen alle passenden Spots.</p>`);
+}
+
 /* ---------- Klima ---------- */
 function bars(vals, labels, max, color) {
   const W = 340, H = 120, L = 26, B = 18, T = 6, bw = (W - L) / vals.length;
@@ -156,7 +196,7 @@ function toggle(id, cb) {
 fetch("analyse.json").then(r => r.json()).then(j => {
   D = j;
   drawSummary(); drawTrust(); drawRel(); drawCharts(); drawSpots(); drawClimate();
-  fetch("spot_directions.json").then(r => r.json()).then(x => { DIRS = x; drawDirs(); }).catch(() => {});
+  fetch("spot_directions.json").then(r => r.json()).then(x => { DIRS = x; drawDirs(); drawBestDir(); }).catch(() => {});
   toggle("relThr", t => { relThr = t; drawRel(); });
   toggle("thrSel", t => { thr = t; drawCharts(); });
 }).catch(e => { $("#summary").innerHTML = `<li>Auswertung konnte nicht geladen werden (${e.message}).</li>`; });

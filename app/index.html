@@ -48,6 +48,10 @@
       <button type="button" id="btnMap" class="seg on" aria-pressed="true">Karte</button>
       <button type="button" id="btnSat" class="seg" aria-pressed="false">Satellit</button>
       <button type="button" id="btnDepth" class="seg depth-btn" aria-pressed="false">Tiefe</button>
+      <button type="button" id="btnWind" class="seg" aria-pressed="false" title="Stündliches Windfeld animiert (ICON, unkorrigiert)">Wind</button>
+    </div>
+    <div class="wind-legend" id="windLegend" hidden aria-label="Legende Windstärke in Knoten">
+      <span style="--c:#4fb3d9">6</span><span style="--c:#3cbf8a">9</span><span style="--c:#9bd34a">12</span><span style="--c:#f2d33b">15</span><span style="--c:#f59a2c">18</span><span style="--c:#e8503a">21</span><span style="--c:#b23a8c">25+</span> kn
     </div>
     <div class="depth-legend" id="depthLegend" aria-label="Legende Wassertiefe" hidden>
       <span><i class="sw st"></i>unter 0,8 m</span>
@@ -56,6 +60,15 @@
       <span><i class="sw ri"></i>Fahrrinne</span>
     </div>
   </section>
+  <div class="wind-bar" id="windBar" hidden>
+    <div class="wind-row">
+      <button type="button" id="windPlay" class="btn" aria-label="Abspielen">▶</button>
+      <input type="range" id="windTime" min="0" max="167" step="1" value="0" aria-label="Uhrzeit der Vorhersage">
+      <span id="windLabel" class="wind-label"></span>
+    </div>
+    <div class="wind-spots" id="windSpots"></div>
+    <p class="hint">Windfeld: ICON (bis 2 Tage 2 km, danach 7 km), unkorrigiert. An den Spots: Wind des gewählten Modells und die lokal korrigierte Chance ab der eingestellten Schwelle (nur bei Tageslicht).</p>
+  </div>
 
   <section class="panel" aria-labelledby="weekH">
     <div class="panel-head">
@@ -87,6 +100,7 @@
 <script src="model.js"></script>
 <script src="ensemble.js"></script>
 <script src="depth.js"></script>
+<script src="windanim.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
