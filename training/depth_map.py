@@ -31,7 +31,8 @@ Varianten (alle als Median über die klarsten Szenen):
     A  blau/grün   Stumpf-Verhältnis ln(B2)/ln(B3)   klassisch, für klares Wasser
     B  grün/rot    Stumpf-Verhältnis ln(B3)/ln(B4)   für trübes Wasser (Caballero & Stumpf)
     C  Helligkeit  Lyzenga ln(B3 - tiefes Wasser)    heller Grund = flach, einfach
-    D  Häufigkeit  Anteil der Szenen, in denen der Grund deutlich durchscheint (robust gegen Einzelszenen)
+    D  Häufigkeit  Anteil der Szenen, in denen der Grund deutlich durchscheint (robust, erkennt Rinnen)
+    E  D + A       D entscheidet flach/tief, A liefert im Flachen die Feinheiten (Pruchten: A und D passen)
 
 Braucht zusätzlich zur kitewind-Umgebung:  odc-stac pystac-client rasterio matplotlib
     mamba install -c conda-forge odc-stac pystac-client rasterio matplotlib
@@ -63,6 +64,7 @@ VARIANTS = {
     "B": "B · grün/rot (Stumpf, trüb)",
     "C": "C · Helligkeit (Lyzenga)",
     "D": "D · Häufigkeit Grund sichtbar",
+    "E": "E · D + A im Flachen",
 }
 
 
@@ -246,7 +248,7 @@ def variants(files):
     wm = ((ndwi > 0.05) | (sclw > 0.5)) & (nir < 0.06)
     del ndwi, sclw, nir
     out = {}
-    for k in ("A", "B", "C", "D"):
+    for k in ("A", "B", "C", "D"):   # E wird unten aus A und D gebildet
         print(f"Variante {k} …", flush=True)
         out[k] = median_layer(files, k).where(wm)
     # Im trüben Bodden ist nicht sicher, in welche Richtung die Verhältnisse A/B mit der Tiefe laufen.
@@ -257,8 +259,18 @@ def variants(files):
         if ok.sum() > 100 and np.corrcoef(a[ok], ref[ok])[0, 1] < 0:
             out[k] = -out[k]
             print(f"Variante {k}: Richtung umgedreht (passt so zu heller = flach)")
+    out["E"] = combine_da(out, wm)
     rgb = xr.Dataset({k: median_layer(files, k) for k in ("red", "green", "blue")})
     return out, wm, rgb
+
+
+def combine_da(out, wm):
+    """E: D entscheidet flach/tief (erkennt auch Rinnen), A liefert nur im Flachen die Abstufung.
+    A allein hält tiefe Rinnen fälschlich für flach, D allein ist grob (nur Anteil von ~10 Tagen)."""
+    a, d = normalize(out["A"], wm), normalize(out["D"], wm)
+    ds = d.rolling(x=3, y=3, center=True, min_periods=1).mean().where(wm)   # leicht glätten
+    w = ((ds - 0.15) / 0.3).clip(0, 1)                                     # 0 = tief, 1 = sicher flach
+    return (0.5 * ds + 0.5 * w * a).where(wm).astype("float32")
 
 
 def normalize(v, wm):
