@@ -26,29 +26,15 @@
 </header>
 
 <main class="an">
-  <section class="panel">
-    <h2>Wem man wann trauen sollte</h2>
-    <p class="lead">Ausgewertet sind alle Tage 2024 und 2025: Was hatten die Modelle 1 bis 7 Tage vorher für den Tag vorhergesagt, und was wurde dann gemessen? Ein Tag gilt als <b>kitebar</b>, wenn zwischen 7 und 19 Uhr mindestens 2 Stunden am Stück der Stundenmittelwert die Schwelle erreicht. Gemessen wird an Darßer Ort (für Zingst und Prerow) und in Barth (für den Bodden).</p>
-    <div class="trust" id="trust"></div>
+  <section class="panel prose">
+    <h2>Kurz gesagt</h2>
+    <ul class="tips" id="summary"></ul>
   </section>
 
   <section class="panel">
-    <div class="panel-head">
-      <h2>Wie gut trifft welches Modell?</h2>
-      <div class="thr-toggle" role="group" aria-label="Schwelle" id="thrSel">
-        <button type="button" class="seg on" data-thr="12" aria-pressed="true">12+ kn</button>
-        <button type="button" class="seg" data-thr="15" aria-pressed="false">15+ kn</button>
-        <button type="button" class="seg" data-thr="20" aria-pressed="false">20+ kn</button>
-      </div>
-    </div>
-    <p class="hint">Trefferwert (AUC): Wie sicher das Modell einen kitebaren von einem windarmen Tag unterscheidet. 1,0 heißt perfekt, 0,5 heißt Münzwurf. Ab etwa 0,8 kann man sich gut danach richten.</p>
-    <div id="charts"></div>
-  </section>
-
-  <section class="panel">
-    <h2>Treffer und Fehlalarme</h2>
-    <p class="hint">Von 10 tatsächlich kitebaren Tagen: wie viele wurden angekündigt? Und von 10 angekündigten: wie viele waren Fehlalarm? ICON zählt als „kitebar“, wenn es selbst 2 h über der Schwelle zeigt; das lokale Modell ab 50 %.</p>
-    <div id="hits"></div>
+    <h2>Welchem Wert trauen?</h2>
+    <p class="hint">Bester Wert je Vorlauf, geprüft an allen Tagen 2024 und 2025. Kitebar heißt: zwischen 7 und 19 Uhr mindestens 2 Stunden am Stück über 12 kn.</p>
+    <div id="trust"></div>
   </section>
 
   <section class="panel">
@@ -60,38 +46,37 @@
         <button type="button" class="seg" data-thr="20" aria-pressed="false">20+ kn</button>
       </div>
     </div>
-    <p class="hint">„kitebar %“ des lokalen Modells, sortiert nach Höhe: An wie vielen dieser Tage war es 2024–25 wirklich kitebar (mind. 2 h am Stück über der Schwelle)? Gerechnet wie in der App: jedes Jahr mit dem Modell des anderen Jahres. In Klammern: Anzahl Tage.</p>
+    <p class="hint">Anteil der Tage, die bei dieser Anzeige wirklich kitebar waren. In Klammern die Zahl der Tage.</p>
     <div id="rel"></div>
   </section>
 
   <section class="panel">
-    <h2>Nach Jahreszeit</h2>
-    <p class="hint">Bestes Modell je Jahreszeit und Vorlauf, Schwelle 12 kn. Zahl: Trefferwert (AUC).</p>
-    <div id="season"></div>
+    <div class="panel-head">
+      <h2>Modelle im Vergleich</h2>
+      <div class="thr-toggle" role="group" aria-label="Schwelle" id="thrSel">
+        <button type="button" class="seg on" data-thr="12" aria-pressed="true">12+ kn</button>
+        <button type="button" class="seg" data-thr="15" aria-pressed="false">15+ kn</button>
+        <button type="button" class="seg" data-thr="20" aria-pressed="false">20+ kn</button>
+      </div>
+    </div>
+    <p class="hint">Wie sicher ein Wert windige von ruhigen Tagen trennt (AUC). 1,0 ist perfekt, 0,5 Zufall. Waagrecht: Tage im Voraus.</p>
+    <div id="charts"></div>
   </section>
 
   <section class="panel">
-    <h2>Wo ICON und ECMWF danebenliegen</h2>
-    <p class="hint">Mittlere Abweichung Messung − Modell in Knoten, je Windrichtung (Stunden mit mindestens 6 kn, 2023–2025). Plus heißt: Das Modell zeigt zu wenig Wind.</p>
-    <div id="bias"></div>
+    <h2>Wind auf dem Wasser</h2>
+    <p class="hint">Aus 439 Radarbildern (Sentinel-1, 300 m) 2024–25: Wind auf dem Wasser am Spot geteilt durch das Mittel der drei Modelle.</p>
+    <div id="spots"></div>
   </section>
 
   <section class="panel">
-    <h2>Das Windklima am Darß</h2>
-    <p class="hint">Gemessen 2016–2025, Tageslicht 7–19 Uhr. Anteil der Tage je Monat mit mindestens 2 Stunden am Stück über der Schwelle.</p>
+    <h2>Windklima Darßer Ort</h2>
+    <p class="hint">Gemessen 2016–2025. Anteil kitebarer Tage je Monat und Herkunft des Windes ab 12 kn.</p>
     <div id="climate"></div>
-    <h3>Aus welcher Richtung kommt der Wind, wenn er weht?</h3>
-    <p class="hint">Anteil der Stunden mit mindestens 12 kn je Richtung.</p>
-    <div id="dirs"></div>
-  </section>
-
-  <section class="panel">
-    <h2>Was das lokale Modell kann – und was nicht</h2>
-    <div class="prose" id="local"></div>
   </section>
 
   <section class="notes">
-    <p>Grundlage: frühere Modellläufe über die Open-Meteo Previous Runs API (Jan 2024 – Dez 2025), DWD-Stundenwerte Darßer Ort und Barth. Das lokale Modell wurde jeweils auf einem Jahr trainiert und am anderen geprüft. Die Ensembles und KI-Modelle (AIFS, WeatherNext 2) lassen sich noch nicht auswerten, weil es keine alten Läufe gibt; das Archiv dafür läuft seit November 2026.</p>
+    <p>Grundlage: frühere Modellläufe über Open-Meteo (2024–2025), Stundenwerte des DWD an Darßer Ort und Barth, Sentinel-1-Radarbilder (Copernicus). Das lokale Modell wurde jeweils an einem Jahr gelernt und am anderen geprüft. Ensembles und KI-Modelle sind noch nicht geprüft, dafür läuft seit November 2026 ein Archiv.</p>
   </section>
 </main>
 <script src="analyse.js"></script>

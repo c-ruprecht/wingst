@@ -246,7 +246,7 @@ function nowcast(sp) {
   const spotIcon = fc.spots[sp.id].icon.ws;
   fc.spots[sp.id].time.forEach((t, i) => {
     const L = i - k;
-    if (L < 0 || L > 24 || spotIcon[i] == null) return;
+    if (L < 0 || t.slice(0, 10) !== key.slice(0, 10) || spotIcon[i] == null) return;   // nur heute
     map[t] = Math.max(0, spotIcon[i] + err * Math.exp(-L / tau));
   });
   return { err, map, at: key };
@@ -419,7 +419,7 @@ function drawWeek() {
   t.innerHTML = html + "</tbody>";
   t.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot)));
   $("#weekHint").innerHTML = state.local
-    ? `Große Zahl: <b>lokal korrigiert</b>, längste Zeit am Stück (h) bei Tageslicht ab ${state.thr} kn aus passender Richtung. Prozent: Chance laut lokalem Modell, dass der Tag kitebar ist (mind. ${MIN_RUN} h). „E“: Anteil von rund 240 Ensemble-Läufen aus 5 Modellen (inkl. KI-Modelle), richtungskorrigiert.${state.thr >= 20 ? " Bodden bei 20+ kn: zu selten für eine Prognose." : ""}`
+    ? `Zahl: Stunden am Stück ab ${state.thr} kn aus passender Richtung (lokales Modell). Darunter: Chance auf mind. ${MIN_RUN} h, „E“ = Anteil der Ensemble-Läufe.${state.thr >= 20 ? " Bodden bei 20+ kn: zu selten für eine Prognose." : ""}`
     : `Zahl: längste Zeit am Stück (h) bei Tageslicht ab ${state.thr} kn aus passender Richtung (${MODEL_LABEL[state.modelSel]}, unkorrigiert – Korrekturmodell lädt noch).`;
 }
 
@@ -451,15 +451,15 @@ function drawDetail() {
     const medRow = (k, label, title) => `<tr class="mrow"><th scope="row" title="${title}">${label}</th>${cells(h => {
       const v = h[k]; return `<td class="${knCls(v)}${offCls(h)}">${v == null ? "" : Math.round(v)}</td>`; })}</tr>`;
     const ed = d.ens?.[thr];
-    const ensLine = ed && ed.p != null ? `<p class="ensline">Ensemble ${thr}+ kn, ≥${MIN_RUN} h am Stück: <b>${pct(ed.p)}</b> · ${WingstEns.MODELS.filter(m => ed.byModel[m.key] != null).map(m => `${m.label.replace(/ \(KI\)/, "")} ${pct(ed.byModel[m.key])}`).join(" · ")}</p>` : "";
+    const ensTip = ed && ed.p != null ? WingstEns.MODELS.filter(m => ed.byModel[m.key] != null).map(m => `${m.label.replace(/ \(KI\)/, "")} ${pct(ed.byModel[m.key])}`).join(", ") : "";
     const knRow = (m, label) => `<tr class="mrow"><th scope="row">${label}</th>${cells(h => {
       const x = h.models[m]; return `<td class="${knCls(x.kn)}${offCls(h)}">${x.kn == null ? "–" : Math.round(x.kn)}</td>`; })}</tr>`;
     return `<section class="fday${isWeekend(d.date) ? " we" : ""}">
       <div class="day-h"><b>${dayLabel(d.date, i)}</b>
         <span class="cmp">${rare ? "20+ kn am Bodden: zu selten für eine Prognose"
           : lr ? `<b>lokal ${runText(lr)}</b> ${spanText(lr)}${d.pday[thr] != null ? ` · kitebar ${pct(d.pday[thr])}` : ""}`
-          : `${MODEL_LABEL[state.modelSel]} ${runText(d.runs[state.modelSel][thr])} ${spanText(d.runs[state.modelSel][thr])}`}${!rare && ed && ed.p != null ? ` · Ensemble ${pct(ed.p)}` : ""}</span></div>
-      ${rare ? "" : ensLine}
+          : `${MODEL_LABEL[state.modelSel]} ${runText(d.runs[state.modelSel][thr])} ${spanText(d.runs[state.modelSel][thr])}`}${!rare && ed && ed.p != null ? ` · <span title="${ensTip}">Ensemble ${pct(ed.p)}</span>` : ""}</span></div>
+
       <div class="ftable-wrap"><table class="ftable">
         <tbody>
           <tr class="hrow"><th scope="row">Uhr</th>${cells(h => `<td>${String(h.hour).padStart(2, "0")}</td>`)}</tr>
@@ -554,7 +554,7 @@ function drawLong() {
   box.innerHTML = `<div class="panel-head"><h2 id="longH">Woche 2: Tendenz</h2><span class="meta">${thr}+ kn · nur Ensembles</span></div>
     ${summary.length ? `<p class="longsum">${summary.map(verdict).join("<br>")}</p>` : ""}
     <div class="weekwrap"><table class="week long"><thead><tr><th scope="col" class="spotcol">Gebiet</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="hint">Zahl: Anteil der Ensemble-Läufe (ECMWF IFS, AIFS, WeatherNext 2, ab Tag 10 ohne GEFS) mit mindestens ${MIN_RUN} h am Stück ab ${thr} kn, richtungskorrigiert. Alle Windrichtungen – ob die Richtung zu einem Spot passt, lässt sich so weit voraus nicht sagen. Einzelne Tage sind nicht vorhersagbar; lies die Zeile als Wetterlage: viele grüne Felder = windige Phase. „Üblich“: gemessen 2016–2025 an der Station im selben Monat. Noch nicht an alten Vorhersagen geprüft.</p>`;
+    <p class="hint">Anteil der Ensemble-Läufe mit mind. ${MIN_RUN} h ab ${thr} kn, alle Richtungen. Einzelne Tage sind so weit voraus nicht vorhersagbar, die Zeile zeigt die Wetterlage. „Üblich“: gemessen 2016–2025 im selben Monat.</p>`;
 }
 
 function renderAll() { drawWeek(); drawLong(); drawDetail(); drawStations(); drawMarkers(); }

@@ -1,5 +1,5 @@
 /* Service Worker: App offline verfügbar, Kartenkacheln zwischenspeichern, Daten immer frisch versuchen. */
-const VERSION = "wingst-v11";
+const VERSION = "wingst-v12";
 const SHELL = ["./", "index.html", "style.css", "app.js", "spots.js", "model.js", "ensemble.js", "analyse.html", "analyse.js", "analyse.json", "modelle.html", "model/manifest.json", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png"];
 const TILE_HOSTS = ["tiles.openfreemap.org", "tiles.maps.eox.at", "unpkg.com", "fonts.gstatic.com", "fonts.googleapis.com"];
