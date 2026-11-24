@@ -2,7 +2,7 @@
    wie bei Windfinder, dazu eine leichte Farbfläche nach Windstärke und ein Zeitregler für die nächsten 7 Tage.
    Das Feld ist das unkorrigierte Modell; die Spot-Chips unter dem Regler zeigen dazu die lokale Chance je Spot.
 
-   WingstWind.init(map, { spotInfo(tIso) -> [{name, kn, p}] })  – einmal nach dem Laden der Karte
+   WingstWind.init(map, { spotInfo(tIso) -> [{name, kn, p}], thresholds: [14, 18] })  – einmal nach dem Laden der Karte
    Bedienung über #btnWind (an/aus), #windBar (Regler, Play) – siehe index.html */
 const WingstWind = (() => {
   const LATS = [], LONS = [];
@@ -15,6 +15,8 @@ const WingstWind = (() => {
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let map, opts, field = null, fetchedAt = 0, on = false, playing = false;
+  let grid = null, corr = true, mode = "thr";            // Satellitenkorrektur, Farbe: "thr" = Schwellen, "kn" = Knoten
+  const THR = () => (opts && opts.thresholds) || [14, 18];
   let hour = 0, frac = 0, raf = null, lastStep = 0;
   let bg, fg, bctx, fctx, parts = [], moving = false;
 
@@ -38,11 +40,40 @@ const WingstWind = (() => {
         u[i] = -sp * Math.sin(a); v[i] = -sp * Math.cos(a); s[i] = sp;     // Richtung = woher der Wind kommt
       }
     });
-    field = { time, T, u, v, s }; fetchedAt = Date.now();
+    field = { time, T, raw: { u, v, s } }; fetchedAt = Date.now();
+    if (grid === null) grid = await fetch("model/wind_grid.json").then(r => r.ok ? r.json() : false).catch(() => false);
+    field.cor = grid ? correct(field.raw, T) : null;
+    pick();
     const now = new Date(), key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:00`;
     hour = Math.max(0, time.indexOf(key)); frac = 0;
     return field;
   }
+
+  /* Satellitenfaktor je Gitterpunkt und Windrichtung (training/sar_grid_factors.py): nur über Wasser, sonst 1 */
+  function correct(raw, T) {
+    const u = new Float32Array(raw.u), v = new Float32Array(raw.v), s = new Float32Array(raw.s);
+    for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
+      const gy = grid.lats.indexOf(LATS[y]), gx = grid.lons.indexOf(LONS[x]);
+      if (gy < 0 || gx < 0) continue;
+      const all = grid.factor_all[gy][gx];
+      for (let t = 0; t < T; t++) {
+        const i = t * NY * NX + y * NX + x;
+        const dir = (Math.atan2(-raw.u[i], -raw.v[i]) * 180 / Math.PI + 360) % 360;
+        const f = grid.factor[Math.floor(((dir + 22.5) % 360) / 45)][gy][gx] ?? all;
+        if (f == null) continue;
+        u[i] *= f; v[i] *= f; s[i] *= f;
+      }
+    }
+    return { u, v, s };
+  }
+  const isWater = (y, x) => {
+    if (!grid) return true;
+    const gy = grid.lats.indexOf(LATS[y]), gx = grid.lons.indexOf(LONS[x]);
+    const w = gy < 0 || gx < 0 ? null : grid.water[gy][gx];
+    return w == null ? true : w >= 0.25;                  // außerhalb der Satellitenkarte: offene See, zählt als Wasser
+  };
+  function pick() { const src = corr && field.cor ? field.cor : field.raw; field.u = src.u; field.v = src.v; field.s = src.s; }
+  function thrColor(kn) { const [a, b] = THR(); return kn >= b ? "#0f7a3c" : kn >= a ? "#39b86b" : null; }
 
   /* bilinear im Gitter, linear zwischen zwei Stunden */
   function sample(lon, lat) {
@@ -71,12 +102,15 @@ const WingstWind = (() => {
     bctx.clearRect(0, 0, w, h);
     if (!field) return;
     const t1 = Math.min(field.T - 1, hour + 1);
-    bctx.globalAlpha = 0.28;
+    bctx.globalAlpha = mode === "thr" ? 0.42 : 0.28;
     const hx = (LONS[1] - LONS[0]) / 2, hy = (LATS[1] - LATS[0]) / 2;
     for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
+      if (mode === "thr" && !isWater(y, x)) continue;      // Schwellen nur auf dem Wasser zeigen
       const k = y * NX + x, s = field.s[hour * NY * NX + k] * (1 - frac) + field.s[t1 * NY * NX + k] * frac;
+      const c = mode === "thr" ? thrColor(s) : colorOf(s);
+      if (!c) continue;
       const a = map.project([LONS[x] - hx, LATS[y] + hy]), b = map.project([LONS[x] + hx, LATS[y] - hy]);
-      bctx.fillStyle = colorOf(s);
+      bctx.fillStyle = c;
       bctx.fillRect(a.x, a.y, b.x - a.x + 1, b.y - a.y + 1);
     }
     bctx.globalAlpha = 1;
@@ -113,7 +147,7 @@ const WingstWind = (() => {
       const ll = map.unproject([p.x, p.y]), f = sample(ll.lng, ll.lat);
       if (!f) { seed(p); continue; }
       const nx = p.x + f[0] * k, ny = p.y - f[1] * k;
-      fctx.strokeStyle = colorOf(f[2]);
+      fctx.strokeStyle = mode === "thr" ? (thrColor(f[2]) || "rgba(40,60,70,.55)") : colorOf(f[2]);
       fctx.beginPath(); fctx.moveTo(p.x, p.y); fctx.lineTo(nx, ny); fctx.stroke();
       p.x = nx; p.y = ny;
     }
@@ -132,6 +166,19 @@ const WingstWind = (() => {
     const info = opts.spotInfo ? opts.spotInfo(field.time[hour]) : [];
     $("#windSpots").innerHTML = info.map(i => `<span class="wchip" style="--c:${i.kn != null ? colorOf(i.kn) : "transparent"}"><b>${i.name}</b> ${i.kn != null ? Math.round(i.kn) + " kn" : "–"}${i.p != null ? ` · ${Math.round(i.p * 100)} %` : ""}</span>`).join("");
   }
+  function syncModes() {
+    const [a, b] = THR();
+    $("#windMode").textContent = mode === "thr" ? `Farbe: ab ${a}/${b} kn` : "Farbe: Knoten";
+    $("#windCorr").textContent = corr ? "Satellitenkorrektur an" : "ICON roh";
+    $("#windCorr").hidden = grid === false;
+    $("#windCorr").classList.toggle("on", corr);
+    $("#windLegend").innerHTML = mode === "thr"
+      ? `<span style="--c:#39b86b">ab ${a}</span><span style="--c:#0f7a3c;color:#fff">ab ${b} kn</span> auf dem Wasser`
+      : `<span style="--c:#4fb3d9">6</span><span style="--c:#3cbf8a">9</span><span style="--c:#9bd34a">12</span><span style="--c:#f2d33b">15</span><span style="--c:#f59a2c">18</span><span style="--c:#e8503a">21</span><span style="--c:#b23a8c">25+</span> kn`;
+    $("#windNote").textContent = corr && grid ? `Windfeld: ICON, über Wasser mit Satellitenfaktoren je Windrichtung korrigiert (${grid.quelle}).`
+      : grid === false ? "Windfeld: ICON, unkorrigiert (Satellitenfaktoren noch nicht berechnet)." : "Windfeld: ICON, unkorrigiert.";
+  }
+
   function setPlay(v) {
     playing = v; const b = $("#windPlay");
     b.textContent = v ? "❚❚" : "▶"; b.setAttribute("aria-label", v ? "Anhalten" : "Abspielen");
@@ -146,7 +193,7 @@ const WingstWind = (() => {
     $("#windLabel").textContent = "Lade Windfeld …";
     try { await load(); } catch (e) { $("#windLabel").textContent = "Windfeld nicht verfügbar (" + e.message + ")"; return; }
     $("#windTime").max = field.T - 1;
-    size(); reseed(); drawBg(); syncBar();
+    size(); reseed(); drawBg(); syncBar(); syncModes();
     if (!raf) raf = requestAnimationFrame(frame);
   }
 
@@ -167,6 +214,10 @@ const WingstWind = (() => {
     $("#btnWind").addEventListener("click", () => toggle(!on));
     $("#windPlay").addEventListener("click", () => setPlay(!playing));
     $("#windTime").addEventListener("input", e => { hour = +e.target.value; frac = 0; drawBg(); syncBar(); });
+    mode = loadPref("windmode") || "thr"; corr = loadPref("windcorr") !== "0";
+    $("#windMode").addEventListener("click", () => { mode = mode === "thr" ? "kn" : "thr"; save("windmode", mode); syncModes(); drawBg(); });
+    $("#windCorr").addEventListener("click", () => { corr = !corr; save("windcorr", corr ? "1" : "0"); if (field) { pick(); drawBg(); } syncModes(); });
+    syncModes();
     document.addEventListener("visibilitychange", () => { if (document.hidden) setPlay(false); });
     if (loadPref("wind") === "1") toggle(true).then(() => { if (!reduce) setPlay(false); });
   }

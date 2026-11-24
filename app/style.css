@@ -313,3 +313,6 @@ svg.chart.dirs .petal { fill: #0b6e8a; }
 .wind-spots { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
 .wchip { font-size: 12px; border-left: 4px solid var(--c); background: var(--card); border-radius: 4px; padding: 1px 6px;
   border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.wind-opts { margin-top: 6px; flex-wrap: wrap; }
+.btn.small { font-size: 12px; padding: 3px 8px; }
+.btn.small.on { border-color: var(--accent); color: var(--accent); }

@@ -351,7 +351,7 @@ function initMap() {
     map.addLayer({ id: "s2", type: "raster", source: "s2", layout: { visibility: "none" } }, firstSymbol && firstSymbol.id);
     WingstDepth.add(map, firstSymbol && firstSymbol.id);
     if (load("layer", "map") === "sat") setLayer("sat");
-    WingstWind.init(map, { spotInfo: windSpotInfo });
+    WingstWind.init(map, { spotInfo: windSpotInfo, thresholds: THRESHOLDS });
   });
   state.map = map;
 }
