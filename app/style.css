@@ -215,3 +215,13 @@ main.an { grid-template-columns: minmax(0, 1fr); }
 .atab.num thead th { text-align: right; }
 .atab.num thead th:first-child { text-align: left; }
 .chartlegend { margin-top: 4px; }
+
+/* Modelle-Seite */
+.mcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.mcard { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--paper); }
+.mcard h3 { margin: 0 0 6px; }
+.mcard h3 small { font-family: var(--font-body); font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+.mcard dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 14px; }
+.mcard dt { color: var(--muted); font-size: 12px; padding-top: 2px; }
+.mcard dd { margin: 0; }
+.nav a { white-space: nowrap; }

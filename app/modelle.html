@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6e8a">
+<title>Modelle – Wingst</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Wingst</h1>
+    <span class="sub">Kitewind Darß · Zingst · Bodden</span>
+  </div>
+  <nav class="nav" aria-label="Hauptmenü">
+    <a href="./">Vorhersage</a>
+    <a href="analyse.html">Windanalyse</a>
+    <a href="modelle.html" aria-current="page">Modelle</a>
+  </nav>
+</header>
+
+<main class="an mo">
+  <section class="panel prose">
+    <h2>Woher die Vorhersage kommt</h2>
+    <p>Alle Wetterdienste rechnen dieselbe Physik – Luftdruck, Temperatur, Feuchte, Wind – auf einem Gitter über die Erde voraus. Sie unterscheiden sich im <b>Gitterabstand</b> (wie fein), in den <b>Startdaten</b> (welche Messungen sie einlesen), in der <b>Physik</b> (wie sie Wolken, Reibung am Boden oder Thermik vereinfachen) und darin, ob sie <b>einen</b> Lauf oder <b>viele</b> rechnen. Die App holt alles kostenlos über Open-Meteo und rechnet die Korrekturen auf deinem Gerät.</p>
+    <p>Für Kiter am Darß ist der Gitterabstand entscheidend: Die Halbinsel ist nur wenige Kilometer breit. Ein grobes Modell sieht hier eine Mischung aus Land, Bodden und Ostsee – und bremst den Wind, als wehe er über Land. Deshalb zeigen gerade die groben Modelle bei Westwind zu wenig.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Die Einzelmodelle</h2>
+    <p class="hint">Je ein Lauf, die beste Einzelschätzung des Wetterdienstes. In der Stundentabelle die Zeilen ICON, GFS, ECMWF.</p>
+    <div class="mcards">
+      <article class="mcard">
+        <h3>ICON <small>Deutscher Wetterdienst</small></h3>
+        <dl>
+          <dt>Gitter</dt><dd>ca. 2 km (ICON-D2, ersten 2 Tage), 7 km (ICON-EU, bis Tag 5), 13 km (global, bis ~Tag 7)</dd>
+          <dt>Neu</dt><dd>D2 alle 3 Stunden, sonst alle 6 Stunden</dd>
+          <dt>Am Darß</dt><dd>Bestes Einzelmodell an der Ostsee für Tag 1–4. Zeigt bei Wind von See (SW–N) 2–4 kn zu wenig, bei Wind von Land 1–2 kn zu viel. Reicht nur ~6,5 Tage – an Tag 7 setzt die App GFS ein.</dd>
+        </dl>
+      </article>
+      <article class="mcard">
+        <h3>GFS <small>NOAA, USA</small></h3>
+        <dl>
+          <dt>Gitter</dt><dd>ca. 13–25 km</dd>
+          <dt>Neu</dt><dd>alle 6 Stunden, rechnet 16 Tage</dd>
+          <dt>Am Darß</dt><dd>An der Ostsee etwas schwächer als ICON. Am Bodden fast immer 2–3 kn zu hoch – viele Fehlalarme. Gut als Gegenstimme: Wenn selbst GFS keinen Wind zeigt, kommt meist keiner.</dd>
+        </dl>
+      </article>
+      <article class="mcard">
+        <h3>ECMWF IFS <small>Europäisches Zentrum, Reading</small></h3>
+        <dl>
+          <dt>Gitter</dt><dd>0,25° (ca. 25 km) in den frei verfügbaren Daten</dd>
+          <dt>Neu</dt><dd>alle 6 Stunden, bis 15 Tage</dd>
+          <dt>Am Darß</dt><dd>Weltweit eines der besten Modelle für die Großwetterlage, an Tag 5–7 oft vorn. Durch das grobe Gitter an der Darßer Küste aber am stärksten zu schwach: bei Westwind etwa 6 kn zu wenig. Für den Zeitpunkt einer Front gut, für die Windstärke am Strand nicht.</dd>
+        </dl>
+      </article>
+      <article class="mcard">
+        <h3>Mittel der drei</h3>
+        <dl>
+          <dt>Was</dt><dd>Durchschnitt aus ICON, GFS und ECMWF (Richtung als Vektor gemittelt)</dd>
+          <dt>Am Darß</dt><dd>Gleicht die Einzelfehler aus. <b>Am Bodden an jedem Tag das Beste</b>, an der Ostsee ab Tag 5 gleichauf mit ICON. Im Auswahlfeld oben „Mittel aller drei“.</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Die Ensembles</h2>
+    <p class="hint">Dasselbe Modell 30–60-mal gerechnet, jeweils mit leicht veränderten Startwerten. Zeigt, wie sicher die Lage ist. In der Tabelle die Zeile „Ens“, in der Wochenübersicht „E %“.</p>
+    <div class="prose">
+      <p>Die Startwerte eines Modells sind nie ganz genau – zwischen den Messstationen wird geschätzt. Das Ensemble rechnet viele plausible Startzustände durch. Bis Tag 2 liegen die Läufe meist eng zusammen, danach laufen sie auseinander. <b>Zeigen 45 von 51 Läufen Westwind mit 15 kn, ist die Lage sicher. Zeigen 20 Wind und 31 Flaute, ist sie offen</b> – egal, was der Einzellauf sagt.</p>
+      <p>Wichtig: Der <b>Mittelwert</b> eines Ensembles ist keine gute Windvorhersage. Wenn die Hälfte Sturm und die Hälfte Flaute zeigt, ergibt das „mäßig“ – was nie eintritt. Die App zeigt deshalb den <b>Anteil der Läufe</b> über der Schwelle.</p>
+    </div>
+    <div class="tscroll"><table class="atab">
+      <thead><tr><th>Ensemble</th><th>Läufe</th><th>Gitter</th><th>Reicht</th><th>Art</th></tr></thead>
+      <tbody>
+        <tr><th>ECMWF IFS ENS</th><td>51</td><td>25 km</td><td>15 Tage</td><td>Physik</td></tr>
+        <tr><th>ECMWF AIFS ENS</th><td>51</td><td>25 km</td><td>15 Tage</td><td>KI</td></tr>
+        <tr><th>Google WeatherNext 2</th><td>64</td><td>25 km</td><td>15 Tage</td><td>KI</td></tr>
+        <tr><th>DWD ICON-EPS</th><td>40</td><td>13 km</td><td>7,5 Tage</td><td>Physik</td></tr>
+        <tr><th>NOAA GEFS</th><td>31</td><td>25 km</td><td>10 Tage</td><td>Physik</td></tr>
+      </tbody>
+    </table></div>
+    <div class="prose">
+      <p><b>KI-Modelle (AIFS, WeatherNext 2):</b> Sie rechnen keine Physikgleichungen, sondern haben aus Jahrzehnten vergangenen Wetters gelernt, wie es weitergeht. Sie brauchen Sekunden statt Stunden und treffen die Großwetterlage nach 4–7 Tagen oft so gut oder besser als klassische Modelle. Lokale Effekte – Thermik, Küstenbremsung, Seewind – bilden sie schwächer ab. In der Tabelle zeigen die Zeilen „AIFS“ und „WN2“ den mittleren Lauf (Median).</p>
+      <p><b>So rechnet die App:</b> Jeder der rund 240 Läufe wird mit der bekannten Abweichung an Darßer Ort bzw. Barth je Windrichtung korrigiert. Dann zählt sie, wie viele Läufe mindestens 2 Stunden am Stück über der Schwelle aus passender Richtung zeigen. Jedes der fünf Modelle zählt gleich viel. <b>Noch nicht geprüft:</b> Alte Ensemble-Läufe werden nirgends aufgehoben; das eigene Archiv läuft seit November 2026.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Die eigenen Korrekturen</h2>
+    <div class="mcards">
+      <article class="mcard">
+        <h3>Lokal <small>Zeile „Lokal 12+“, große Zahl in der Woche</small></h3>
+        <dl>
+          <dt>Was</dt><dd>Ein lernendes Modell (XGBoost), trainiert an zwei Jahren alter Vorhersagen und echter Messung an Darßer Ort und Barth.</dd>
+          <dt>Nutzt</dt><dd>ICON, GFS, ECMWF, Windrichtung, Luft- und Wassertemperatur (Ostsee und Bodden), Sonne, Thermik, Druckverteilung, Jahreszeit, Tage im Voraus.</dd>
+          <dt>Gibt aus</dt><dd>Chance in % je Stunde, dass der Wind die Schwelle erreicht; daraus „Stunden am Stück“ und „kitebar %“ für den Tag.</dd>
+          <dt>Stark</dt><dd>An der Ostsee (Zingst, Prerow) bis Tag 6 klar besser als jedes Einzelmodell. Am Bodden nicht besser als das Mittel der drei.</dd>
+        </dl>
+      </article>
+      <article class="mcard">
+        <h3>Jetzt-korr. <small>nur heute</small></h3>
+        <dl>
+          <dt>Was</dt><dd>ICON plus der Fehler, den ICON gerade an der Messstation macht. Liegt ICON jetzt 4 kn zu tief, wird das auf die nächsten Stunden übertragen und klingt ab.</dd>
+          <dt>Stark</dt><dd>An Darßer Ort für die nächsten 3–12 Stunden (Fehler hält lange an). In Barth nur 1–3 Stunden.</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel prose">
+    <h2>Messungen</h2>
+    <ul class="tips">
+      <li><b>Darßer Ort</b> (DWD): Leuchtturm an der Nordspitze, Mast in 12 m Höhe. Referenz für Zingst und Prerow.</li>
+      <li><b>Barth</b> (DWD): an Land südlich des Bodden. Auf dem Wasser weht es etwa 1,3- bis 1,45-mal so stark (Satellitenauswertung Sentinel-1).</li>
+      <li><b>Arkona</b> (DWD), <b>Gedser</b> und <b>Vindebæk</b> (DMI, Dänemark): offene Ostsee westlich und nördlich – Westwind kommt dort zuerst an.</li>
+      <li><b>Darßer Schwelle</b> (IOW/BSH): Messmast auf See, nur als Diagramm verfügbar.</li>
+    </ul>
+  </section>
+
+  <section class="panel prose">
+    <h2>Welchem Wert vertrauen?</h2>
+    <ul class="tips">
+      <li><b>Zingst, Prerow, Tag 1–6:</b> Lokal.</li>
+      <li><b>Bodden (Born, Saal, Fuhlendorf, Pruchten):</b> Mittel der drei.</li>
+      <li><b>Ab Tag 5:</b> zusätzlich auf „E %“ schauen. Faustregel, noch nicht an Messungen geprüft: unter etwa 30 % lohnt sich die Anreise selten, über 70 % sind sich die Modelle weitgehend einig.</li>
+      <li><b>Heute:</b> Messung und „Jetzt-korr.“ schlagen jedes Modell.</li>
+    </ul>
+    <p>Die Zahlen dahinter stehen unter <a href="analyse.html">Windanalyse</a>.</p>
+  </section>
+
+  <section class="notes">
+    <p>Modelldaten: Open-Meteo (CC BY 4.0) mit Daten von DWD, NOAA, ECMWF und Google. Angaben zu Gitter und Reichweite wie bei Open-Meteo verwendet; die Wetterdienste rechnen teils feiner.</p>
+  </section>
+</main>
+</body>
+</html>
