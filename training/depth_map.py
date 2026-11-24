@@ -393,7 +393,11 @@ def main():
         allrows.to_csv(f"{a.out}/alle_tage.csv", index=False)
         picked.to_csv(f"{a.out}/szenen.csv", index=False)
         ds = load_full(items, list(pd.to_datetime(picked.time).dt.normalize()))
-        ds.to_netcdf(stack)
+        try:
+            ds.to_netcdf(stack)
+        except ValueError as e:   # kein netCDF4/h5netcdf/scipy installiert
+            print(f"Hinweis: Zwischenspeicher {stack} nicht geschrieben ({e}).\n"
+                  "  --skip-download geht erst nach:  mamba install -c conda-forge netcdf4")
     flat, wm = variants(ds)
     cal = calibrate(flat, f"{a.out}/tiefenpunkte.csv")
     template(a.out)
