@@ -1,11 +1,14 @@
 """Flachwasserkarte der Boddenkette aus Sentinel-2 (Satellite-Derived Bathymetry, mehrere Varianten).
 
-Lädt Sentinel-2 L2A (AWS Earth Search, ohne Konto), sucht die Szenen mit dem klarsten Wasser,
+Lädt Sentinel-2 L2A (AWS Earth Search, ohne Konto), nimmt nur windstille Wintertage (Wind aus dem
+Open-Meteo-Archiv, ERA5 – bei Wind wird im Bodden Sediment aufgewirbelt, im Sommer trüben Algen)
+und davon die Szenen mit dem klarsten Wasser,
 rechnet vier Varianten einer "Flachheit" und baut eine Vergleichsseite je Spot.
 
 Aufruf (aus dem Repo-Ordner):
-    python training/depth_map.py                       # Standard: 2018 bis heute, 10 klarste Szenen
-    python training/depth_map.py --scenes 15 --max-cloud 30
+    python training/depth_map.py                       # Standard: Winter (Nov–März), vorher 36 h ≤ 10 kn, 10 klarste Tage
+    python training/depth_map.py --max-wind 8 --calm-hours 48 --scenes 6
+    python training/depth_map.py --months alle --max-wind 0    # ohne Saison- und Windfilter
     python training/depth_map.py --skip-download       # nur neu rechnen/zeichnen aus data/depth/stack.nc
 
 Ergebnis in data/depth/ (nicht im Repo):
@@ -97,8 +100,37 @@ def load(items, bands, res):
     return ds
 
 
-def screen(items, n_scenes):
-    """Grob (60 m) alle Tage prüfen: Bodden wolkenfrei, kein Eis, Wasser möglichst klar (wenig Rot)."""
+WIND_POINT = (54.37, 12.66)   # Mitte Barther Bodden / Pruchten
+
+
+def wind_history(t0, t1):
+    """Stündlicher Wind (ERA5 über Open-Meteo-Archiv, kostenlos) über dem Bodden in Knoten."""
+    import urllib.parse
+    from download_training_data import get
+    q = dict(latitude=WIND_POINT[0], longitude=WIND_POINT[1], start_date=f"{t0:%Y-%m-%d}", end_date=f"{t1:%Y-%m-%d}",
+             hourly="wind_speed_10m", wind_speed_unit="kn", timezone="UTC")
+    h = get("https://archive-api.open-meteo.com/v1/archive?" + urllib.parse.urlencode(q))["hourly"]
+    return pd.Series(h["wind_speed_10m"], index=pd.to_datetime(h["time"]), dtype=float)
+
+
+def add_wind(rows, calm_hours):
+    """Mittel- und Höchstwind der letzten calm_hours Stunden vor dem Überflug (aufgewirbelter Sand braucht Zeit)."""
+    t = pd.to_datetime(rows.time).dt.tz_localize(None).dt.round("h")
+    w = wind_history(t.min() - pd.Timedelta(days=3), min(t.max(), pd.Timestamp.today() - pd.Timedelta(days=6)))
+    mean, mx = [], []
+    for ti in t:
+        win = w[ti - pd.Timedelta(hours=calm_hours): ti]
+        ok = win.notna().sum() >= calm_hours * 0.8
+        mean.append(win.mean() if ok else np.nan); mx.append(win.max() if ok else np.nan)
+    return rows.assign(wind_mittel_kn=np.round(mean, 1), wind_max_kn=np.round(mx, 1))
+
+
+def screen(items, n_scenes, months, calm_hours, max_wind):
+    """Grob (60 m) alle Tage prüfen: Wintermonat, vorher windstill, Bodden wolkenfrei, kein Eis,
+    Wasser möglichst klar (wenig Rot)."""
+    if months:
+        items = [it for it in items if it.datetime.month in months]
+        print(f"{len(items)} Kacheln in den Monaten {sorted(months)}")
     print("Vorauswahl bei 60 m …")
     ds = load(items, ["red", "scl"], 60).compute()
     scl = ds.scl
@@ -112,9 +144,19 @@ def screen(items, n_scenes):
         "eis": (scl == SCL_ICE).mean(["x", "y"]).values,
         "rot_wasser": ds.red.where(water).median(["x", "y"]).values,
     })
-    ok = rows[(rows.wasser_anteil > 0.85) & (rows.wolke < 0.02) & (rows.eis < 0.01)].dropna()
+    if max_wind is not None:
+        rows = add_wind(rows, calm_hours)
+    ok = rows[(rows.wasser_anteil > 0.85) & (rows.wolke < 0.02) & (rows.eis < 0.01)].dropna(subset=["rot_wasser"])
+    print(f"{len(ok)} wolken- und eisfreie Tage")
+    if max_wind is not None:
+        calm = ok[ok.wind_max_kn <= max_wind]
+        print(f"{len(calm)} davon mit höchstens {max_wind:g} kn in den {calm_hours} h davor")
+        if len(calm) < 3:
+            print("Zu wenige windstille Tage – nehme die ruhigsten (nach Höchstwind).")
+            calm = ok.sort_values("wind_max_kn").head(max(3, n_scenes // 2))
+        ok = calm
     ok = ok.sort_values("rot_wasser")
-    print(f"{len(ok)} brauchbare Tage, davon die {n_scenes} mit dem klarsten Wasser:")
+    print(f"Verwendet: die {min(n_scenes, len(ok))} Tage mit dem klarsten Wasser:")
     pick = ok.head(n_scenes)
     print(pick.round(4).to_string(index=False))
     return rows, pick
@@ -279,7 +321,11 @@ def page(ds, flat, wm, cal, picked, out):
     if cal:
         caltab = "<h2>Abgleich mit Tiefenpunkten</h2><table><tr><th>Variante</th><th>Punkte</th><th>r</th><th>Fehler (Auslassung)</th></tr>" + "".join(
             f"<tr><td>{VARIANTS[k]}</td><td>{c['n']}</td><td>{c['r']:+.2f}</td><td>{c['rmse_loo']:.2f} m</td></tr>" for k, c in cal.items()) + "</table>"
-    days = ", ".join(pd.to_datetime(picked.time).dt.strftime("%d.%m.%Y"))
+    pt = pd.to_datetime(picked.time).dt.strftime("%d.%m.%Y")
+    if "wind_max_kn" in picked:
+        days = ", ".join(f"{d} ({w:g} kn)" for d, w in zip(pt, picked.wind_max_kn))
+    else:
+        days = ", ".join(pt)
     html = f"""<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>Flachwasser Bodden – Varianten</title><style>
 body{{margin:0;font:15px/1.5 system-ui,sans-serif;background:#f6f4ee;color:#14212b}}
@@ -291,7 +337,7 @@ background:linear-gradient(90deg,#0b2a4a,#1f5f8b,#4fa3c7,#a8dbd9,#f3e3b0,#f7c873
 table{{border-collapse:collapse}} td,th{{padding:4px 10px;border-bottom:1px solid #ccc;text-align:left}} .note{{color:#4a5763;font-size:13px}}
 </style></head><body><main>
 <h1>Flachwasser im Bodden – welche Variante passt?</h1>
-<p class="note">Sentinel-2, Median der {len(picked)} Tage mit dem klarsten Wasser: {days}. Ausschnitte ±{HALF_KM:g} km um den Spot (roter Kreis), Norden oben.
+<p class="note">Sentinel-2, Median der {len(picked)} Tage mit dem klarsten Wasser (in Klammern: Höchstwind davor): {days}. Ausschnitte ±{HALF_KM:g} km um den Spot (roter Kreis), Norden oben.
 Farben sind relativ (2.–98. Perzentil im ganzen Bodden), keine Meter – außer in den Meter-Spalten mit Tiefenpunkten.</p>
 <div class="legend"><span>tief</span><span class="bar"></span><span>sehr flach</span><span style="margin-left:16px">grau = Land/Schilf</span></div>
 {caltab}{"".join(rows)}
@@ -324,6 +370,11 @@ def main():
     ap.add_argument("--years", default=f"2018-{dt.date.today().year}")
     ap.add_argument("--scenes", type=int, default=10, help="Anzahl klarster Tage für den Median")
     ap.add_argument("--max-cloud", type=float, default=20, help="max. Wolken je Kachel in %%")
+    ap.add_argument("--months", default="11,12,1,2,3",
+                    help="nur diese Monate (Winter: wenig Algen); 'alle' für das ganze Jahr")
+    ap.add_argument("--max-wind", type=float, default=10,
+                    help="max. Wind (kn) in den Stunden vor dem Überflug; 0 = kein Windfilter")
+    ap.add_argument("--calm-hours", type=int, default=36, help="so viele Stunden vorher windstill")
     ap.add_argument("--skip-download", action="store_true", help="vorhandenes stack.nc verwenden")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
@@ -337,7 +388,8 @@ def main():
         items = search((y0, y1), a.max_cloud)
         if not len(items):
             sys.exit("Keine Szenen gefunden.")
-        allrows, picked = screen(items, a.scenes)
+        months = None if a.months == "alle" else {int(m) for m in a.months.split(",")}
+        allrows, picked = screen(items, a.scenes, months, a.calm_hours, a.max_wind or None)
         allrows.to_csv(f"{a.out}/alle_tage.csv", index=False)
         picked.to_csv(f"{a.out}/szenen.csv", index=False)
         ds = load_full(items, list(pd.to_datetime(picked.time).dt.normalize()))
