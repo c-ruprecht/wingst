@@ -12,6 +12,8 @@ const STATIONS = [
   { id: "darss",   name: "Darßer Ort",   src: "dwd", sid: "06097", lat: 54.4738, lon: 12.5014 },
   { id: "barth",   name: "Barth",        src: "dwd", sid: "00298", lat: 54.3405, lon: 12.7109 },
   { id: "arkona",  name: "Arkona",       src: "dwd", sid: "00183", lat: 54.6791, lon: 13.4344 },
+  // Südwest-Vorbote: bei SW–W erreicht der Wind Fehmarn im Median ~2 h vor dem Darßer Ort (DWD 2024–26)
+  { id: "fehmarn", name: "Fehmarn",      src: "dwd", sid: "05516", lat: 54.5283, lon: 11.0606 },
   { id: "vindebk", name: "Vindebæk Kyst (DK)", src: "dmi", sid: "06147", lat: 54.879, lon: 12.1841 },
   { id: "gedser",  name: "Gedser (DK)",  src: "dmi", sid: "06149", lat: 54.5687, lon: 11.9435 }
 ];

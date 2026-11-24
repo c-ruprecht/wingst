@@ -19,12 +19,34 @@ Aufruf
 
 Für 1–3 reicht die Python-Standardbibliothek, für 4 das Paket copernicusmarine. Bereits geladene Dateien werden übersprungen,
 ein abgebrochener Lauf kann also einfach neu gestartet werden.
+Dateien des laufenden Jahres werden neu geladen, wenn sie älter als einen Tag sind (Daten bis gestern).
 Ergebnis: Ordner ./data/{openmeteo,openmeteo_prev,dwd,dmi,sentinel1}/
 """
-import argparse, csv, io, json, os, re, time, urllib.error, urllib.parse, urllib.request, zipfile
+import argparse, csv, datetime as dt, io, json, os, re, time, urllib.error, urllib.parse, urllib.request, zipfile
 
-YEARS = range(2021, 2026)
+TODAY = dt.date.today()
+THIS_YEAR = TODAY.year
+LAST_DAY = TODAY - dt.timedelta(days=1)   # laufendes Jahr: Daten bis gestern
+YEARS = range(2021, THIS_YEAR + 1)
 OUT = "data"
+
+
+def need(path, year=None):
+    """Laden, wenn die Datei fehlt – oder wenn sie das laufende Jahr enthält und älter als einen Tag ist."""
+    if not os.path.exists(path):
+        return True
+    if year is not None and year < THIS_YEAR:
+        return False
+    return time.time() - os.path.getmtime(path) > 86400
+
+
+def period(y, mon=None):
+    """(Anfang, Ende) eines Jahres oder Monats, beim laufenden Jahr bis gestern; None, wenn ganz in der Zukunft."""
+    import calendar
+    a = dt.date(y, mon or 1, 1)
+    b = dt.date(y, mon, calendar.monthrange(y, mon)[1]) if mon else dt.date(y, 12, 31)
+    b = min(b, LAST_DAY)
+    return (a.isoformat(), b.isoformat()) if a <= b else None
 
 # ---------- 1. Open-Meteo ----------
 PLACES = {
@@ -44,7 +66,7 @@ OM_HOURLY = ",".join([
 # ---------- 1b. Open-Meteo frühere Läufe (Vorlaufzeit 1–7 Tage) ----------
 PR_PLACES = {k: PLACES[k] for k in ("darss_ort", "barth", "darss_schwelle", "prerow", "zingst",
                                      "fuhlendorf", "pruchten", "born", "saal")}
-PR_YEARS = [2024, 2025]
+PR_YEARS = list(range(2024, THIS_YEAR + 1))
 PR_VARS = ["wind_speed_10m", "wind_direction_10m", "wind_gusts_10m", "wind_speed_80m", "temperature_2m",
            "pressure_msl", "cloud_cover", "shortwave_radiation", "cape", "precipitation"]
 PR_MODEL_VARS = {"icon_seamless": PR_VARS, "gfs_seamless": PR_VARS,
@@ -59,18 +81,20 @@ def previous_runs():
         for y in PR_YEARS:
             for m, vars_ in PR_MODEL_VARS.items():
                 path = f"{OUT}/openmeteo_prev/{name}_{m}_{y}.csv"
-                if os.path.exists(path):
+                if not need(path, y):
                     continue
                 allvars = [f"{v}_previous_day{d}" for v in vars_ for d in range(1, 8)]
                 packs = [allvars[i:i + 14] for i in range(0, len(allvars), 14)]   # 2 Variablen x 7 Tage
                 frames = []
                 for mon in range(1, 13):
-                    last = calendar.monthrange(y, mon)[1]
+                    per = period(y, mon)
+                    if not per:
+                        break
                     print(f"  {name} {m} {y}-{mon:02d} ({len(packs)} Pakete) …", end=" ", flush=True)
                     t0 = time.time(); cols = {}
                     for pk in packs:
-                        q = dict(latitude=lat, longitude=lon, start_date=f"{y}-{mon:02d}-01",
-                                 end_date=f"{y}-{mon:02d}-{last}", hourly=",".join(pk), models=m,
+                        q = dict(latitude=lat, longitude=lon, start_date=per[0],
+                                 end_date=per[1], hourly=",".join(pk), models=m,
                                  wind_speed_unit="kn", timezone="UTC")
                         h = get("https://previous-runs-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q),
                                 timeout=120)["hourly"]
@@ -139,13 +163,15 @@ def blh():
         lat, lon = PLACES[name]
         for y in PR_YEARS:
             path = f"{OUT}/openmeteo_prev/{name}_gfs_blh_{y}.csv"
-            if os.path.exists(path):
+            if not need(path, y):
                 continue
             rows = []
             for mon in range(1, 13):
-                last = calendar.monthrange(y, mon)[1]
+                per = period(y, mon)
+                if not per:
+                    break
                 print(f"  {name} BLH {y}-{mon:02d} …", end=" ", flush=True)
-                q = dict(latitude=lat, longitude=lon, start_date=f"{y}-{mon:02d}-01", end_date=f"{y}-{mon:02d}-{last}",
+                q = dict(latitude=lat, longitude=lon, start_date=per[0], end_date=per[1],
                          hourly=",".join(vars_), models="gfs_seamless", timezone="UTC")
                 h = get("https://previous-runs-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q), timeout=120)["hourly"]
                 n = len(h["time"])
@@ -225,16 +251,16 @@ def openmeteo():
         for y in YEARS:
             for m in MODELS:
                 path = f"{OUT}/openmeteo/{name}_{m}_{y}.csv"
-                if os.path.exists(path):
+                if not need(path, y):
                     continue
-                q = dict(latitude=lat, longitude=lon, start_date=f"{y}-01-01", end_date=f"{y}-12-31",
+                q = dict(latitude=lat, longitude=lon, start_date=period(y)[0], end_date=period(y)[1],
                          hourly=OM_HOURLY, models=m, wind_speed_unit="kn", timezone="UTC")
                 d = get("https://historical-forecast-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q))
                 h = d["hourly"]; keys = list(h)
                 write_rows(path, keys, zip(*(h[k] for k in keys))); print(" ", path); time.sleep(1)
             path = f"{OUT}/openmeteo/{name}_sst_{y}.csv"
-            if not os.path.exists(path):
-                q = dict(latitude=lat, longitude=lon, start_date=f"{y}-01-01", end_date=f"{y}-12-31",
+            if need(path, y):
+                q = dict(latitude=lat, longitude=lon, start_date=period(y)[0], end_date=period(y)[1],
                          hourly="sea_surface_temperature", timezone="UTC")
                 d = get("https://marine-api.open-meteo.com/v1/marine?" + urllib.parse.urlencode(q))
                 h = d["hourly"]; keys = list(h)
@@ -253,7 +279,7 @@ def dwd_files(product, sid):
 def dwd(product, stations, tag):
     for sid, name in stations.items():
         path = f"{OUT}/dwd/{name}_{tag}.csv"
-        if os.path.exists(path):
+        if not need(path):
             continue
         rows, header = {}, None
         for url in dwd_files(product, sid):
@@ -282,7 +308,7 @@ def dmi():
     for sid, name in DMI_MET.items():
         for y in YEARS:
             path = f"{OUT}/dmi/{name}_{y}.csv"
-            if os.path.exists(path):
+            if not need(path, y):
                 continue
             table = {}
             for p in DMI_MET_PARAMS:
@@ -294,7 +320,7 @@ def dmi():
     for sid, name in DMI_OCEAN.items():
         for y in YEARS:
             path = f"{OUT}/dmi/{name}_tw_{y}.csv"
-            if os.path.exists(path):
+            if not need(path, y):
                 continue
             rows = dmi_series("oceanObs", sid, "tw", y)
             write_rows(path, ["time_utc", "tw"], rows); print(" ", path, len(rows))

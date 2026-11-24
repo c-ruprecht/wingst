@@ -4,7 +4,7 @@ Zwei Ebenen:
   stündlich  P(Wind >= 12 / 15 kn) je Stunde, mit Vorlaufzeit als Merkmal
   täglich    P(Tag ist kitebar) = mind. 2 h am Stück >= 12 (bzw. 15) kn bei Tageslicht
 
-Bewertet wird ehrlich: auf 2024 trainieren, 2025 testen, und umgekehrt – getrennt je Vorlaufzeit.
+Bewertet wird ehrlich: je ein Jahr (2024, 2025, 2026) testen, auf den anderen trainieren – getrennt je Vorlaufzeit.
 
 Aufruf: python train_7day.py ../data ../data/dwd ../results ../models
 """
@@ -18,7 +18,7 @@ from features import load_obs
 DATA, DWD, RES, MODELS = sys.argv[1:5]
 SITES = ("darss_ort", "barth")
 LEADS = range(1, 8)
-YEARS = (2024, 2025)
+YEARS = (2024, 2025, 2026)   # 2026 bis gestern; Kreuzvalidierung: je ein Jahr testen, auf den übrigen trainieren
 THRS = (14, 18)       # 14 kn = kitebar, 18 kn = stark
 # Schwellen gelten für den Wind auf dem Wasser. Barth misst an Land; laut Sentinel-1 (300 m, 2024–25) weht es auf dem
 # Bodden im Median 1,22-mal so stark (sar_spot_model.py: 1,21–1,27 je Spot). Darßer Ort steht exponiert an der Küste.
@@ -204,12 +204,13 @@ def main():
         H["obs_kn"] = obs.reindex(H.index).values * WATER_FACTOR[site]   # Wind auf dem Wasser (Äquivalent)
         H = H.dropna(subset=["obs_kn", "models_mean_ws10"])
         H = H[H.year.isin(YEARS)]
+        years = sorted(H.year.unique())   # nur Jahre, für die Daten da sind
         feats = [c for c in H.columns if c not in ("obs_kn", "local_date", "year", "daylight", "dwd_ws10")]
         DF = DAILY_BY_SITE[site]
         for thr in THRS:
             # --- stündlich, Kreuzvalidierung über Jahre ---
             H[f"p{thr}"] = np.nan
-            for test_year in YEARS:
+            for test_year in years:
                 tr, te = H[H.year != test_year], H[H.year == test_year]
                 m = xgb.XGBClassifier(**HOURLY_PARAMS).fit(tr[feats], (tr.obs_kn >= thr).astype(int))
                 H.loc[H.year == test_year, f"p{thr}"] = m.predict_proba(te[feats])[:, 1]
@@ -223,7 +224,7 @@ def main():
             # --- täglich ---
             Dd = daily_table(H, thr, f"p{thr}")
             Dd["p_day"] = np.nan
-            for test_year in YEARS:
+            for test_year in years:
                 tr, te = Dd[Dd.year != test_year], Dd[Dd.year == test_year]
                 m = xgb.XGBClassifier(**DAILY_PARAMS).fit(tr[DF], tr.y)
                 Dd.loc[te.index, "p_day"] = m.predict_proba(te[DF])[:, 1]

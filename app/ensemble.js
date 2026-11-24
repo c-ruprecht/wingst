@@ -11,6 +11,8 @@ const WingstEns = (() => {
     { id: "ncep_gefs025", key: "gefs", label: "NOAA GEFS", bias: "gfs" }
   ];
   const SITES = [{ id: "darss_ort", lat: 54.4738, lon: 12.5014 }, { id: "barth", lat: 54.3405, lon: 12.7109 }];
+  // Barth misst an Land; auf dem Bodden weht es ~1,22-mal so stark (Sentinel-1). Gleicher Faktor wie im lokalen Modell.
+  const WATER = { darss_ort: 1.0, barth: 1.22 };
 
   /** Antwort in {time, models:{key:{ws:[Lauf][Stunde], wd:[…]}}} zerlegen. Schlüssel z. B.
       wind_speed_10m_member07_ecmwf_ifs025_ensemble; Kontrolllauf ohne _memberNN. */
@@ -44,7 +46,7 @@ const WingstEns = (() => {
     if (res && res.error) throw new Error(res.reason || "Ensemble-Fehler");
     if (!Array.isArray(res)) res = [res];
     const out = {};
-    SITES.forEach((s, i) => { out[s.id] = parse(res[i]); });
+    SITES.forEach((s, i) => { out[s.id] = parse(res[i]); out[s.id].water = WATER[s.id]; });
     return out;
   }
 
@@ -69,6 +71,8 @@ const WingstEns = (() => {
    */
   function probabilities(ens, siteBias, win, hoursByDay, thresholds, minRun, inWindow) {
     const idx = {}; ens.time.forEach((t, i) => { idx[t] = i; });
+    const wf = ens.water || 1;
+    const corr = (ws, wd, b, sb, key) => { const v = corrected(ws, wd, b, sb, key); return v == null ? null : v * wf; };
     const hourly = {}, daily = {}, med = {};
     for (const m of MODELS) med[m.key] = {};
     for (const [date, hours] of hoursByDay) {
@@ -84,7 +88,7 @@ const WingstEns = (() => {
             let run = 0, best = 0, valid = 0;
             ii.forEach((i, j) => {
               if (i == null) { run = 0; return; }
-              const ws = corrected(wsArr[i], o.wd[k][i], null, siteBias, m.bias), wd = o.wd[k][i];
+              const ws = corr(wsArr[i], o.wd[k][i], null, siteBias, m.bias), wd = o.wd[k][i];
               if (ws == null || wd == null) { run = 0; return; }
               valid++;
               const ok = ws >= thr && inWindow(wd, win);
@@ -109,7 +113,7 @@ const WingstEns = (() => {
             const o = ens.models[m.key]; if (!o.ws.length) continue;
             let hit = 0, n = 0;
             o.ws.forEach((wsArr, k) => {
-              const ws = corrected(wsArr[i], o.wd[k][i], null, siteBias, m.bias), wd = o.wd[k][i];
+              const ws = corr(wsArr[i], o.wd[k][i], null, siteBias, m.bias), wd = o.wd[k][i];
               if (ws == null || wd == null) return;
               n++; if (ws >= thr && inWindow(wd, win)) hit++;
             });

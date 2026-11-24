@@ -25,7 +25,7 @@ jobs:
           STAMP=$(cat out/STAMP)
           TAG="archiv-${STAMP:0:7}"
           tar -czf "wingst-${STAMP}.tar.gz" -C out .
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Vorhersage-Archiv ${STAMP:0:7}" --notes "Automatisch: Ensemble- und Modellvorhersagen, zweimal täglich (archive/fetch_archive.py)." --prerelease
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Vorhersage-Archiv ${STAMP:0:7}" --notes "Automatisch: Ensemble- und Modellvorhersagen und Pegel, zweimal täglich (archive/fetch_archive.py)." --prerelease
           gh release upload "$TAG" "wingst-${STAMP}.tar.gz" --clobber
       - name: Repo aktiv halten (GitHub stoppt Zeitpläne nach 60 Tagen ohne Aktivität)
         run: |

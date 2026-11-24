@@ -1,6 +1,8 @@
 """Historische Vorhersagen der KI-Modelle an Darßer Ort und Barth herunterladen (für die Prüfung der 14-Tage-Tendenz).
 
 Quellen
+  ens   Ensemble-Archive für die Prüfung der Ensemble-Prozente (validate_ens.py), frei über dynamical.org:
+        ECMWF IFS ENS (51 Läufe, 15 Tage) und NOAA GEFS (31 Läufe, gekürzt auf 15 Tage), ab 04/2024
   aifs  ECMWF AIFS (Einzellauf ab 02/2024, Ensemble ab 07/2025) – frei über dynamical.org (AWS, kein Konto nötig)
   wn2   Google WeatherNext 2, 64 Läufe, 15 Tage, ab 2022 – gs://weathernext/weathernext_2_0_0/zarr,
         Zugang vorher über das WeatherNext-Datenanfrageformular beantragen; danach einmal
@@ -9,6 +11,7 @@ Quellen
 Aufruf (im conda-Env, mit `python`, nicht `python3`):
   pip install xarray zarr icechunk dynamical-catalog gcsfs
   python download_ai_history.py --inspect           # zeigt Aufbau der Datensätze (Ausgabe an Claude schicken, falls etwas fehlt)
+  python download_ai_history.py --only ens          # IFS ENS + GEFS ab April 2024 (dauert, ist aber unterbrechbar)
   python download_ai_history.py --only aifs
   python download_ai_history.py --only wn2
 Ergebnis: data/ai_history/<quelle>_<station>.csv.gz  (Spalten: init_time, lead_h, member, u10, v10, [t2m, msl])
@@ -47,7 +50,7 @@ def describe(ds, label):
         print(f"  {v}: dims={ds[v].dims} chunks={getattr(ds[v].data, 'chunksize', None)}")
 
 
-def extract(ds, label, step_days=1):
+def extract(ds, label, step_days=1, start=START, max_lead_h=None):
     """Je Station den nächsten Gitterpunkt ziehen, Monat für Monat speichern (Abbruch und Neustart möglich)."""
     d = {k: pick(v, ds.dims) or pick(v, ds.coords) for k, v in DIMS.items()}
     vars_ = {k: pick(v, ds.data_vars) for k, v in NAMES.items()}
@@ -61,7 +64,7 @@ def extract(ds, label, step_days=1):
         lon_q = lon if lon_vals.min() < 0 or lon < 180 else lon % 360
         pt = ds[keep].sel({d["lat"]: lat, d["lon"]: lon_q}, method="nearest")
         inits = pd.to_datetime(pt[d["init"]].values)
-        inits = inits[(inits >= START) & (inits.hour == 0)]           # nur 00-UTC-Läufe
+        inits = inits[(inits >= start) & (inits.hour == 0)]           # nur 00-UTC-Läufe
         months = sorted(set(inits.to_period("M")))
         parts = []
         for m in months:
@@ -70,7 +73,12 @@ def extract(ds, label, step_days=1):
                 parts.append(fn); continue
             sel = inits[inits.to_period("M") == m][::step_days]
             t0 = time.time()
-            sub = pt.sel({d["init"]: sel}).load()
+            sub = pt.sel({d["init"]: sel})
+            if max_lead_h and d["lead"]:
+                lv = sub[d["lead"]].values
+                lh = lv / np.timedelta64(1, "h") if np.issubdtype(lv.dtype, np.timedelta64) else lv
+                sub = sub.isel({d["lead"]: np.where(lh <= max_lead_h)[0]})
+            sub = sub.load()
             df = sub.to_dataframe().reset_index()
             ren = {d["init"]: "init_time", d["lat"]: "lat", d["lon"]: "lon"}
             if d["lead"]: ren[d["lead"]] = "lead"
@@ -115,6 +123,29 @@ def aifs(inspect=False):
             print("Paket fehlt: pip install dynamical-catalog")
 
 
+ENS_SOURCES = {   # Label: (mögliche Katalognamen bei dynamical.org)
+    "ifs_ens": ("ecmwf-ifs-ens-forecast-15-day-0-25-degree", "ecmwf-ifs-ens-forecast"),
+    "gefs": ("noaa-gefs-forecast-35-day", "noaa-gefs-forecast"),
+}
+
+
+def ens(inspect=False):
+    for label, names in ENS_SOURCES.items():
+        ds = None
+        for name in names:
+            try:
+                ds = open_dynamical(name); break
+            except Exception as e:
+                print(f"{name}: nicht geöffnet ({e.__class__.__name__}: {e})")
+        if ds is None:
+            print(f"{label}: kein Katalogname passte – bitte die Ausgabe an Claude schicken.")
+            continue
+        if inspect:
+            describe(ds, label)
+        else:
+            extract(ds, label, start="2024-04-01", max_lead_h=360)
+
+
 def wn2(inspect=False):
     import xarray as xr
     path = "gs://weathernext/weathernext_2_0_0/zarr"
@@ -135,10 +166,10 @@ def wn2(inspect=False):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only", choices=["aifs", "wn2"])
+    ap.add_argument("--only", choices=["ens", "aifs", "wn2"])
     ap.add_argument("--inspect", action="store_true")
     a = ap.parse_args()
-    for name, fn in (("aifs", aifs), ("wn2", wn2)):
+    for name, fn in (("ens", ens), ("aifs", aifs), ("wn2", wn2)):
         if a.only in (None, name):
             print("==", name)
             try:
