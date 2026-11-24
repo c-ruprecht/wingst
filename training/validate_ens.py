@@ -19,14 +19,13 @@ import glob, json, os, sys
 import numpy as np, pandas as pd
 from sklearn.isotonic import IsotonicRegression
 from sklearn.metrics import roc_auc_score
-from features import load_obs, MS2KN
+from features import load_obs, MS2KN, water_factor
 
 DATA, RES, MODEL_DIR = (sys.argv + [None, None, None, None])[1:4]
 DATA, RES, MODEL_DIR = DATA or "../data", RES or "../results", MODEL_DIR or "../app/model"
 SITES = ("darss_ort", "barth")
 THRS = (14, 18)
 MIN_RUN = 2
-WATER_FACTOR = {"darss_ort": 1.0, "barth": 1.22}     # wie train_7day.py und app/ensemble.js
 BIAS_KEY = {"ifs_ens": "ecmwf", "aifs_ens": "ecmwf", "gefs": "gfs", "icon_eps": "icon", "wn2": None}
 TZ = "Europe/Berlin"
 
@@ -59,6 +58,7 @@ def ens_daily(path, site, site_bias, key):
         times = (init + pd.to_timedelta(hours, "h")).tz_convert(TZ)
         loc_h, loc_d = times.hour.values, times.date
         lead_day = np.array([(x - init.tz_convert(TZ).date()).days for x in loc_d])
+        wf = water_factor(site, times)
         day_mask = (loc_h >= 7) & (loc_h <= 19) & (lead_day >= 1) & (lead_day <= 14)
         per_member = {}
         for mem, m in g.groupby("member"):
@@ -69,7 +69,7 @@ def ens_daily(path, site, site_bias, key):
             v = np.interp(hours, m.lead_h.values, m.v10.values, left=np.nan, right=np.nan)
             ws = np.hypot(u, v) * MS2KN
             wd = (np.degrees(np.arctan2(-u, -v)) + 360) % 360
-            per_member[mem] = corrected(ws, np.nan_to_num(wd), site_bias, key) * WATER_FACTOR[site]
+            per_member[mem] = corrected(ws, np.nan_to_num(wd), site_bias, key) * wf
             per_member[mem][np.isnan(u)] = np.nan
         if not per_member:
             continue
@@ -89,7 +89,8 @@ def ens_daily(path, site, site_bias, key):
 
 
 def obs_labels(site):
-    o = load_obs(f"{DATA}/dwd", site) * WATER_FACTOR[site]
+    o = load_obs(f"{DATA}/dwd", site)
+    o = o * water_factor(site, o.index)
     o.index = o.index.tz_convert(TZ)
     o = o[(o.index.hour >= 7) & (o.index.hour <= 19)]
     rows = []

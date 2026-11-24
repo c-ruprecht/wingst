@@ -622,6 +622,7 @@ function init() {
   else $("#map").innerHTML = '<p class="maperr">Karte nicht verfügbar (offline).</p>';
   renderAll();
   fetchJSON("analyse.json").then(j => { CLIMATE = j.climate; drawLong(); }).catch(() => {});
+  fetchJSON("model/water_factor.json").then(t => { WingstEns.setWater(t); state.ensCache = {}; renderAll(); }).catch(() => {});
   fetchJSON("model/ens_bias.json").then(b => { state.ensBias = b; state.ensCache = {}; renderAll(); }).catch(e => console.warn("Ensemble-Korrektur", e));
   loadLocalModel()
     .then(m => { state.model = m; recomputeLocal(); renderAll();

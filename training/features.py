@@ -133,3 +133,20 @@ def build(om_root, dwd_root):
     df["year"] = local.year
     df["daylight"] = (local.hour >= 7) & (local.hour <= 19)
     return df.dropna(subset=["obs_kn", "icon_ws10"])
+
+
+_WF = None
+
+
+def water_factor(site, index):
+    """Faktor Station -> Wind auf dem Wasser je Zeitpunkt (Barth: je Jahreszeit und Ortszeit, siehe water_factor.py)."""
+    global _WF
+    if site != "barth":
+        return np.ones(len(index))
+    if _WF is None:
+        import json, os
+        _WF = np.array(json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "model", "water_factor.json")))["barth"])
+    loc = pd.DatetimeIndex(index).tz_convert("Europe/Berlin")
+    m = loc.month
+    se = np.select([np.isin(m, [3, 4, 5]), np.isin(m, [6, 7, 8]), np.isin(m, [9, 10, 11])], [1, 2, 3], 0)
+    return _WF[se, loc.hour]

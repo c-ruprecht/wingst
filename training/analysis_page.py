@@ -2,7 +2,7 @@
 Grundlage: Kreuzvalidierte Tagesvorhersagen (results/7day_daily_oof_*), DWD-Messungen 2016–2025."""
 import sys, json, glob, numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score
-from features import load_obs
+from features import load_obs, water_factor
 RES, DWD, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 SEAS = {12: "Winter", 1: "Winter", 2: "Winter", 3: "Frühling", 4: "Frühling", 5: "Frühling",
         6: "Sommer", 7: "Sommer", 8: "Sommer", 9: "Herbst", 10: "Herbst", 11: "Herbst"}
@@ -42,7 +42,8 @@ for f in sorted(glob.glob(f"{RES}/7day_daily_oof_*.csv")):
 
 # Klima aus Messungen 2016–2025: Anteil kitebarer Tage je Monat (>= 2 h am Stück bei Tageslicht 7–19)
 for site in ("darss_ort", "barth"):
-    o = load_obs(DWD, site) * {"darss_ort": 1.0, "barth": 1.22}[site]   # Wind auf dem Wasser, wie im Training
+    o = load_obs(DWD, site)
+    o = o * water_factor(site, o.index)   # Wind auf dem Wasser, wie im Training
     o = o[(o.index >= "2016-01-01") & (o.index < "2026-01-01")]
     d = pd.read_csv(f"{DWD}/{site}_wind.csv", dtype={"MESS_DATUM": str})
     d["time"] = pd.to_datetime(d["MESS_DATUM"], format="%Y%m%d%H", utc=True)

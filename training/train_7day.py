@@ -13,16 +13,16 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import roc_auc_score, brier_score_loss
-from features import load_obs
+from features import load_obs, water_factor
 
 DATA, DWD, RES, MODELS = sys.argv[1:5]
 SITES = ("darss_ort", "barth")
 LEADS = range(1, 8)
 YEARS = (2024, 2025, 2026)   # 2026 bis gestern; Kreuzvalidierung: je ein Jahr testen, auf den übrigen trainieren
 THRS = (14, 18)       # 14 kn = kitebar, 18 kn = stark
-# Schwellen gelten für den Wind auf dem Wasser. Barth misst an Land; laut Sentinel-1 (300 m, 2024–25) weht es auf dem
-# Bodden im Median 1,22-mal so stark (sar_spot_model.py: 1,21–1,27 je Spot). Darßer Ort steht exponiert an der Küste.
-WATER_FACTOR = {"darss_ort": 1.0, "barth": 1.22}
+# Schwellen gelten für den Wind auf dem Wasser. Barth misst an Land; der Faktor zum Bodden hängt von Jahreszeit und
+# Uhrzeit ab (water_factor.py, app/model/water_factor.json): morgens/abends ~1,2–1,3, mittags im Frühjahr ~0,9–1,0.
+# Darßer Ort steht exponiert an der Küste (Faktor 1).
 MIN_RUN = 2           # Stunden am Stück für „kitebar“
 MOD = {"icon_seamless": "icon", "gfs_seamless": "gfs", "ecmwf_ifs025": "ecmwf"}
 HOURLY_PARAMS = dict(n_estimators=400, max_depth=5, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
@@ -201,7 +201,7 @@ def main():
         obs = load_obs(DWD, site)
         H = pd.concat([features(site, d, raw[site], raw["barth"], raw["darss_schwelle"], sst[site], sst["darss_schwelle"], bodden)
                        for d in LEADS])
-        H["obs_kn"] = obs.reindex(H.index).values * WATER_FACTOR[site]   # Wind auf dem Wasser (Äquivalent)
+        H["obs_kn"] = obs.reindex(H.index).values * water_factor(site, H.index)   # Wind auf dem Wasser (Äquivalent)
         H = H.dropna(subset=["obs_kn", "models_mean_ws10"])
         H = H[H.year.isin(YEARS)]
         years = sorted(H.year.unique())   # nur Jahre, für die Daten da sind

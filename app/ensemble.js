@@ -11,8 +11,16 @@ const WingstEns = (() => {
     { id: "ncep_gefs025", key: "gefs", label: "NOAA GEFS", bias: "gfs" }
   ];
   const SITES = [{ id: "darss_ort", lat: 54.4738, lon: 12.5014 }, { id: "barth", lat: 54.3405, lon: 12.7109 }];
-  // Barth misst an Land; auf dem Bodden weht es ~1,22-mal so stark (Sentinel-1). Gleicher Faktor wie im lokalen Modell.
-  const WATER = { darss_ort: 1.0, barth: 1.22 };
+  // Barth misst an Land. Faktor zum Wind auf dem Bodden je Jahreszeit und Ortszeit (model/water_factor.json),
+  // gleich wie im lokalen Modell. Bis die Tabelle geladen ist: 1,1 (Tagesmittel).
+  let WATER_TABLE = null;
+  const setWater = t => { WATER_TABLE = t && t.barth; };
+  const season = m => (m >= 3 && m <= 5) ? 1 : (m >= 6 && m <= 8) ? 2 : (m >= 9 && m <= 11) ? 3 : 0;
+  function waterAt(site, t) {
+    if (site !== "barth") return 1;
+    if (!WATER_TABLE) return 1.1;
+    return WATER_TABLE[season(Number(t.slice(5, 7)))][Number(t.slice(11, 13))];
+  }
 
   /** Antwort in {time, models:{key:{ws:[Lauf][Stunde], wd:[…]}}} zerlegen. Schlüssel z. B.
       wind_speed_10m_member07_ecmwf_ifs025_ensemble; Kontrolllauf ohne _memberNN. */
@@ -46,7 +54,7 @@ const WingstEns = (() => {
     if (res && res.error) throw new Error(res.reason || "Ensemble-Fehler");
     if (!Array.isArray(res)) res = [res];
     const out = {};
-    SITES.forEach((s, i) => { out[s.id] = parse(res[i]); out[s.id].water = WATER[s.id]; });
+    SITES.forEach((s, i) => { out[s.id] = parse(res[i]); out[s.id].site = s.id; });
     return out;
   }
 
@@ -71,8 +79,8 @@ const WingstEns = (() => {
    */
   function probabilities(ens, siteBias, win, hoursByDay, thresholds, minRun, inWindow) {
     const idx = {}; ens.time.forEach((t, i) => { idx[t] = i; });
-    const wf = ens.water || 1;
-    const corr = (ws, wd, b, sb, key) => { const v = corrected(ws, wd, b, sb, key); return v == null ? null : v * wf; };
+    const wf = ens.time.map(t => waterAt(ens.site, t));
+    const corr = (ws, wd, b, sb, key, i) => { const v = corrected(ws, wd, b, sb, key); return v == null ? null : v * wf[i]; };
     const hourly = {}, daily = {}, med = {};
     for (const m of MODELS) med[m.key] = {};
     for (const [date, hours] of hoursByDay) {
@@ -88,7 +96,7 @@ const WingstEns = (() => {
             let run = 0, best = 0, valid = 0;
             ii.forEach((i, j) => {
               if (i == null) { run = 0; return; }
-              const ws = corr(wsArr[i], o.wd[k][i], null, siteBias, m.bias), wd = o.wd[k][i];
+              const ws = corr(wsArr[i], o.wd[k][i], null, siteBias, m.bias, i), wd = o.wd[k][i];
               if (ws == null || wd == null) { run = 0; return; }
               valid++;
               const ok = ws >= thr && inWindow(wd, win);
@@ -113,7 +121,7 @@ const WingstEns = (() => {
             const o = ens.models[m.key]; if (!o.ws.length) continue;
             let hit = 0, n = 0;
             o.ws.forEach((wsArr, k) => {
-              const ws = corr(wsArr[i], o.wd[k][i], null, siteBias, m.bias), wd = o.wd[k][i];
+              const ws = corr(wsArr[i], o.wd[k][i], null, siteBias, m.bias, i), wd = o.wd[k][i];
               if (ws == null || wd == null) return;
               n++; if (ws >= thr && inWindow(wd, win)) hit++;
             });
@@ -130,6 +138,6 @@ const WingstEns = (() => {
     return { hourly, daily, median: med };
   }
 
-  return { MODELS, SITES, fetchAll, probabilities, parse };
+  return { MODELS, SITES, fetchAll, probabilities, parse, setWater };
 })();
 if (typeof module !== "undefined") module.exports = WingstEns;
