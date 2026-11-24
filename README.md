@@ -32,6 +32,7 @@ python train.py   ../data ../data/dwd ../results
 python forward.py ../data ../data/dwd ../results
 python satellite.py ../data/sentinel1 ../data/dwd ../results
 python train_7day.py ../data ../data/dwd ../results ../models   # braucht data/openmeteo_prev
+python netatmo_wind.py --find --history --check   # private Netatmo-Windmesser am Bodden finden und gegen Barth prüfen
 python import_uba_zingst.py <UBA-Lieferung.zip>   # UBA Zingst 2016–25 -> data/uba, Vergleich -> results/uba_zingst_vergleich.csv
 curl -L -o ../data/depth/Elevation-Bathymetry.zip https://gdi.bsh.de/de/data/Elevation-Bathymetry.zip
 python depth_layer.py                        # Tiefenebene der App -> app/depth.geojson
