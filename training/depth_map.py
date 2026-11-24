@@ -318,6 +318,99 @@ def calibrate(flat, path):
     return res
 
 
+# ---------------------------------------------------------------- Bekannte Flächen (Labels) und EMODnet
+
+# Becken grob nach Länge: das Wasser ist je Becken anders gefärbt, Schwellen gelten nur innerhalb eines Beckens
+BASINS = {"Saaler/Bodstedter Bodden": (12.30, 12.62), "Barther Bodden/Zingster Strom": (12.62, 12.80),
+          "Grabow": (12.80, 13.00)}
+LABELS = f"{ROOT}/training/depth_labels.geojson"
+
+
+def rasterize_labels(v, path=LABELS):
+    """GeoJSON-Flächen (Eigenschaft 'klasse': 'stehtief' oder 'tief') auf das Raster legen."""
+    if not os.path.exists(path):
+        return []
+    import shapely
+    from shapely.geometry import shape
+    from pyproj import Transformer
+    from rasterio import features
+    to = Transformer.from_crs("EPSG:4326", CRS, always_xy=True)
+    gb = v.odc.geobox
+    out = []
+    for f in json.load(open(path))["features"]:
+        g = shapely.transform(shape(f["geometry"]), lambda c: np.c_[to.transform(c[:, 0], c[:, 1])])
+        m = features.rasterize([g], out_shape=v.shape, transform=gb.affine, dtype="uint8").astype(bool)
+        near = features.rasterize([g.buffer(300)], out_shape=v.shape, transform=gb.affine, dtype="uint8").astype(bool)
+        out.append({**f["properties"], "mask": m, "near": near, "lon": shapely.centroid(shape(f["geometry"])).x})
+    return out
+
+
+def auc(pos, neg):
+    pos, neg = pos[np.isfinite(pos)], neg[np.isfinite(neg)]
+    if len(pos) < 20 or len(neg) < 20:
+        return np.nan
+    rk = np.r_[pos, neg].argsort().argsort() + 1
+    return float((rk[:len(pos)].sum() - len(pos) * (len(pos) + 1) / 2) / (len(pos) * len(neg)))
+
+
+def check_labels(layers, wm):
+    """Je Fläche und Variante: Trefferquote (AUC), dass die Fläche flacher (stehtief) bzw. tiefer (tief) ist
+    als das übrige Wasser im selben Becken (≥ 300 m Abstand). 0,5 = Zufall, 1 = perfekt."""
+    v0 = next(iter(layers.values()))
+    labs = rasterize_labels(v0)
+    if not labs:
+        return None
+    w = wm.values
+    rows = []
+    for L in labs:
+        basin = next(n for n, (a, b) in BASINS.items() if a <= L["lon"] < b)
+        lo, hi = BASINS[basin]
+        from pyproj import Transformer
+        lon, _ = Transformer.from_crs(CRS, "EPSG:4326", always_xy=True).transform(v0.x.values, np.full(v0.x.size, float(v0.y.mean())))
+        inb = np.broadcast_to((lon >= lo) & (lon < hi), w.shape)
+        pos = L["mask"] & w
+        neg = inb & w & ~L["near"]
+        for other in labs:            # andere Flächen nicht als Gegenbeispiel nehmen
+            neg &= ~other["near"]
+        tief = L.get("klasse") == "tief"
+        r = {"Fläche": L.get("name", "?"), "Klasse": L.get("klasse", "?"), "Becken": basin}
+        for k, v in layers.items():
+            a = v.values
+            r[k] = auc(a[neg], a[pos]) if tief else auc(a[pos], a[neg])
+        rows.append(r)
+    t = pd.DataFrame(rows)
+    print("Abgleich mit bekannten Flächen (AUC, 0,5 = Zufall):")
+    print(t.round(2).to_string(index=False))
+    return t
+
+
+def emodnet(like):
+    """EMODnet-Tiefenmodell (~115 m, kostenlos) auf das Raster legen; Tiefe in m (positiv)."""
+    import urllib.parse, rasterio
+    from rasterio.io import MemoryFile
+    from rasterio.warp import reproject, Resampling
+    from download_training_data import get
+    lon0, lat0, lon1, lat1 = BBOX
+    last = None
+    for cov in ("emodnet__mean", "emodnet:mean"):
+        q = [("service", "WCS"), ("version", "2.0.1"), ("request", "GetCoverage"), ("coverageId", cov),
+             ("format", "image/tiff"), ("subset", f"Lat({lat0},{lat1})"), ("subset", f"Long({lon0},{lon1})")]
+        try:
+            raw = get("https://ows.emodnet-bathymetry.eu/wcs?" + urllib.parse.urlencode(q), binary=True, tries=2)
+            with MemoryFile(raw) as mf, mf.open() as src:
+                dst = np.full(like.shape, np.nan, dtype="float32")
+                reproject(src.read(1).astype("float32"), dst, src_transform=src.transform, src_crs=src.crs,
+                          src_nodata=src.nodata, dst_transform=like.odc.geobox.affine, dst_crs=CRS,
+                          dst_nodata=np.nan, resampling=Resampling.bilinear)
+            depth = xr.DataArray(-dst, dims=("y", "x"), coords={"y": like.y, "x": like.x}).odc.assign_crs(CRS)
+            print(f"EMODnet geladen ({cov}): Tiefe im Bodden Median {float(depth.where(depth > 0).median()):.1f} m")
+            return depth
+        except Exception as e:   # Netz, Dienst oder Format – EMODnet ist nur eine Zusatzspalte
+            last = e
+    print(f"EMODnet nicht geladen ({last}) – weiter ohne.")
+    return None
+
+
 # ---------------------------------------------------------------- Bilder und Seite
 
 def png(arr, cmap, vmin=0, vmax=1, size=None, marker=None):
@@ -359,12 +452,14 @@ def depth_cmap():
     return LinearSegmentedColormap.from_list("flach", ["#0b2a4a", "#1f5f8b", "#4fa3c7", "#a8dbd9", "#f3e3b0", "#f7c873"])
 
 
-def page(ds, flat, wm, cal, picked, out):
+def page(ds, flat, wm, cal, picked, out, emod=None, labtab=None):
     cmap = depth_cmap()
     tc = truecolor(ds)
     tcx = xr.DataArray(np.moveaxis(tc, -1, 0), dims=("band", "y", "x"), coords={"y": ds.y.values, "x": ds.x.values})
     norm = {k: normalize(v, wm) for k, v in flat.items()}
     cols = [("tc", "Satellitenbild (Median)")] + [(k, VARIANTS[k]) for k in flat]
+    if emod is not None:
+        cols.append(("emod", "EMODnet (m, ~115 m Raster)"))
     if cal:
         cols += [(f"m{k}", f"{k} in Metern") for k in cal]
     rows = []
@@ -374,6 +469,9 @@ def page(ds, flat, wm, cal, picked, out):
             if key == "tc":
                 c, mk = crop(tcx, lat, lon)
                 src = png(np.moveaxis(c.values, 0, -1), None, size=300, marker=mk)
+            elif key == "emod":
+                c, mk = crop(emod.where(wm), lat, lon)
+                src = png(c.values, cmap.reversed(), vmin=0, vmax=4, size=300, marker=mk)
             elif key.startswith("m"):
                 k = key[1:]
                 c, mk = crop(flat[k] * cal[k]["a"] + cal[k]["c"], lat, lon)
@@ -393,6 +491,15 @@ def page(ds, flat, wm, cal, picked, out):
     if cal:
         caltab = "<h2>Abgleich mit Tiefenpunkten</h2><table><tr><th>Variante</th><th>Punkte</th><th>r</th><th>Fehler (Auslassung)</th></tr>" + "".join(
             f"<tr><td>{VARIANTS[k]}</td><td>{c['n']}</td><td>{c['r']:+.2f}</td><td>{c['rmse_loo']:.2f} m</td></tr>" for k, c in cal.items()) + "</table>"
+    if labtab is not None and len(labtab):
+        ks = [k for k in labtab.columns if k not in ("Fläche", "Klasse", "Becken")]
+        caltab += ("<h2>Bekannte Flächen</h2><p class=note>Trefferquote (AUC), dass die Fläche richtig als flacher bzw. "
+                   "tiefer erkannt wird als das übrige Wasser im selben Becken. 0,5 = Zufall, 1 = perfekt. "
+                   "Flächen in training/depth_labels.geojson.</p><table><tr><th>Fläche</th><th>Klasse</th>"
+                   + "".join(f"<th>{VARIANTS.get(k, k)}</th>" for k in ks) + "</tr>"
+                   + "".join(f"<tr><td>{r['Fläche']}</td><td>{r['Klasse']}</td>"
+                             + "".join(f"<td>{r[k]:.2f}</td>" for k in ks) + "</tr>" for _, r in labtab.iterrows())
+                   + "</table>")
     pt = pd.to_datetime(picked.time).dt.strftime("%d.%m.%Y")
     if "wind_max_kn" in picked:
         days = ", ".join(f"{d} ({w:g} kn)" for d, w in zip(pt, picked.wind_max_kn))
@@ -450,6 +557,7 @@ def main():
     ap.add_argument("--calm-hours", type=int, default=36, help="so viele Stunden vorher windstill")
     ap.add_argument("--res", type=int, default=10, help="Auflösung in m (20 halbiert Zeit und Speicher grob auf 1/4)")
     ap.add_argument("--threads", type=int, default=2, help="parallele Lese-Threads (wenig RAM: 1–2)")
+    ap.add_argument("--no-emodnet", action="store_true", help="EMODnet-Tiefenmodell nicht laden")
     ap.add_argument("--skip-download", action="store_true",
                     help="nur neu rechnen/zeichnen aus data/depth/szenen/ (z. B. nach neuen Tiefenpunkten)")
     a = ap.parse_args()
@@ -473,10 +581,18 @@ def main():
     if not files:
         sys.exit("Keine Szenen in data/depth/szenen/ – erst ohne --skip-download laufen lassen.")
     flat, wm, rgb = variants(files)
+    emod = None if a.no_emodnet else emodnet(flat["A"])
+    layers = dict(flat)
+    if emod is not None:
+        layers["EMODnet"] = -emod.where(wm)          # flacher = größer, wie die Varianten
+        emod.where(wm).astype("float32").odc.write_cog(f"{a.out}/emodnet_tiefe.tif", overwrite=True)
+    labtab = check_labels(layers, wm)
+    if labtab is not None:
+        labtab.to_csv(f"{a.out}/flaechen_check.csv", index=False)
     cal = calibrate(flat, f"{a.out}/tiefenpunkte.csv")
     template(a.out)
     write_tifs(flat, wm, cal, a.out)
-    page(rgb, flat, wm, cal, picked, a.out)
+    page(rgb, flat, wm, cal, picked, a.out, emod, labtab)
 
 
 if __name__ == "__main__":
