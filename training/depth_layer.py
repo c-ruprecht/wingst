@@ -62,6 +62,9 @@ def lines(depth, T, crs, level):
     """Tiefenlinie als Rand der Fläche 'tiefer als level' (geglättet, ohne Kleinkram)."""
     deep = ndimage.binary_opening(np.nan_to_num(depth) >= level, iterations=1)
     to = Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+    h, w = depth.shape
+    x0, y0 = T * (0, 0); x1, y1 = T * (w, h)
+    inner = shapely.box(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)).buffer(-100)   # Ausschnittsrand weglassen
     out = []
     for g, v in features.shapes(deep.astype("uint8"), mask=deep, transform=T):
         g = shape(g)
@@ -70,9 +73,12 @@ def lines(depth, T, crs, level):
         for ring in [g.exterior, *g.interiors]:
             if ring.length < 400:
                 continue
-            ln = shapely.LineString(ring.coords).simplify(SIMPLIFY)
-            ln = shapely.transform(ln, lambda c: np.c_[to.transform(c[:, 0], c[:, 1])])
-            out.append({"type": "Feature", "properties": {"art": "linie", "tiefe": level}, "geometry": mapping(ln)})
+            ln = shapely.LineString(ring.coords).intersection(inner).simplify(SIMPLIFY)
+            for part in getattr(ln, "geoms", [ln]):
+                if part.is_empty or part.geom_type != "LineString" or part.length < 400:
+                    continue
+                part = shapely.transform(part, lambda c: np.c_[to.transform(c[:, 0], c[:, 1])])
+                out.append({"type": "Feature", "properties": {"art": "linie", "tiefe": level}, "geometry": mapping(part)})
     return out
 
 
