@@ -172,11 +172,24 @@ def sst_bodden():
                             output_directory=f"{OUT}/sst_sat", output_filename=fn, **SAT_BBOX)
 
 
+def _ssl_context():
+    """macOS-Python von python.org bringt keine Zertifikate mit -> certifi nutzen, falls vorhanden."""
+    import ssl
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
+SSL_CTX = _ssl_context()
+
+
 def get(url, binary=False, tries=6, timeout=180):
     for i in range(tries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "kitewind-training/1.0"})
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as r:
                 data = r.read()
             return data if binary else json.loads(data)
         except urllib.error.HTTPError as e:
@@ -190,6 +203,8 @@ def get(url, binary=False, tries=6, timeout=180):
                 time.sleep(10); continue
             raise
         except (urllib.error.URLError, TimeoutError) as e:
+            if "CERTIFICATE_VERIFY_FAILED" in str(e):
+                raise SystemExit("SSL-Zertifikate fehlen. Im conda-Env starten (python statt python3) oder: pip install certifi")
             if i < tries - 1:
                 print(f"   ({e.__class__.__name__}, neuer Versuch)", flush=True)
                 time.sleep(10); continue

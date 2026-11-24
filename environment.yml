@@ -17,7 +17,8 @@ dependencies:
   - copernicusmarine>=2.0  # Sentinel-1-Wind von Copernicus Marine
   # Modell und Auswertung
   - scikit-learn>=1.4
-  - xgboost>=2.0
+  - xgboost
+  - certifi>=2.0
   - shap>=0.45
   - optuna>=3.6          # Hyperparameter-Suche
   # Grafiken und Notebooks
