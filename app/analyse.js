@@ -174,6 +174,28 @@ function drawLocal() {
     <p><b>Grenzen:</b> Nur zwei Jahre Daten (2024–2025). Die Prozentangaben sind Rangfolgen, keine geprüften Wahrscheinlichkeiten. Richtung und Spot-Ausrichtung prüft die App getrennt. Böen und Wellen kennt es nicht.</p>`);
 }
 
+/* ---------- Trefferquote je Prozentbereich ---------- */
+let relThr = 12;
+function drawRel() {
+  const G = ["1–2", "3–4", "5–7"];
+  const sites = relThr >= 20 ? ["darss_ort"] : ["darss_ort", "barth"];
+  let h = "";
+  for (const site of sites) {
+    const R = D.reliability.filter(r => r.site === site && r.thr === relThr);
+    const bins = [...new Set(R.map(r => r.bin))];
+    h += `<h3>${SITE_NAME[site]}, ${relThr}+ kn</h3><table class="atab num"><thead><tr><th>App zeigt</th>${G.map(g => `<th>Tag ${g}</th>`).join("")}</tr></thead><tbody>`;
+    for (const b of bins) {
+      h += `<tr><th>${b}</th>${G.map(g => { const r = R.find(x => x.bin === b && x.leads === g);
+        return r && r.n >= 15 ? `<td class="${r.rate >= 0.88 ? "q3" : r.rate >= 0.7 ? "q2" : r.rate >= 0.4 ? "q1" : ""}">${pc(r.rate)} <small>(${r.n})</small></td>` : `<td><small>${r ? r.n : 0} Tage</small></td>`; }).join("")}</tr>`;
+    }
+    h += "</tbody></table>";
+  }
+  const r = (s, b, g) => D.reliability.find(x => x.site === s && x.thr === 12 && x.bin === b && x.leads === g);
+  const a = r("darss_ort", "90–100 %", "1–2"), c = r("darss_ort", "90–100 %", "5–7");
+  h += `<p>Lesebeispiel Ostsee, 12 kn: Zeigt die App für morgen oder übermorgen über 90 %, war es in ${pc(a.rate)} der Fälle kitebar. Für Tag 5–7 heißt dieselbe Anzeige nur noch ${pc(c.rate)}. Ab Tag 6 rechnet die App deshalb eine Eichung ein; davor sind die Werte schon so gut geeicht, dass eine Eichung sie in der Prüfung verschlechtert hat.</p>`;
+  put("#rel", h);
+}
+
 function setThr(t) {
   thr = t;
   document.querySelectorAll("#thrSel .seg").forEach(b => { const on = Number(b.dataset.thr) === t; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
@@ -182,6 +204,10 @@ function setThr(t) {
 
 fetch("analyse.json").then(r => r.json()).then(j => {
   D = j;
-  drawTrust(); drawCharts(); drawSeason(); drawBias(); drawClimate(); drawLocal();
+  drawTrust(); drawCharts(); drawRel(); drawSeason(); drawBias(); drawClimate(); drawLocal();
+  document.querySelectorAll("#relThr .seg").forEach(b => b.addEventListener("click", () => {
+    relThr = Number(b.dataset.thr);
+    document.querySelectorAll("#relThr .seg").forEach(x => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on); });
+    drawRel(); }));
   document.querySelectorAll("#thrSel .seg").forEach(b => b.addEventListener("click", () => setThr(Number(b.dataset.thr))));
 }).catch(e => { put("#trust", `<p class="status err">Auswertung konnte nicht geladen werden (${e.message}).</p>`); });

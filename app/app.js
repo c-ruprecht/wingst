@@ -172,9 +172,23 @@ async function fetchObs() {
 }
 
 /* ---------- lokales Korrekturmodell ---------- */
+/* Eichung (training/calibrate.py): nur ab Tag 6 – davor sind die rohen Werte in der Kreuzvalidierung besser geeicht */
+const CALIB_FROM_LEAD = 6;
+function calibrate(cal, p, lead) {
+  if (!cal || lead < CALIB_FROM_LEAD || p == null) return p;
+  const c = cal[String(lead)]; if (!c) return p;
+  const [xs, ys] = c;
+  if (p <= xs[0]) return ys[0];
+  if (p >= xs[xs.length - 1]) return ys[ys.length - 1];
+  let i = 1; while (xs[i] < p) i++;
+  const f = (p - xs[i - 1]) / Math.max(xs[i] - xs[i - 1], 1e-9);
+  return ys[i - 1] + f * (ys[i] - ys[i - 1]);
+}
+
 async function loadLocalModel() {
   const man = await fetchJSON("model/manifest.json");
   const out = { manifest: man, hourly: {}, daily: {} };
+  out.calib = await fetchJSON("model/calib.json").catch(() => null);
   const jobs = [];
   for (const [site, levels] of Object.entries(man.sites)) {
     for (const level of ["hourly", "daily"]) {
@@ -207,7 +221,8 @@ function computeLocal() {
       const p = rows.map(r => WingstModel.predictProba(hm, WingstModel.vec(r, M.manifest.hourly_features)));
       const day = {};
       for (const d of WingstModel.dailyFeatures(rows, p, thr)) {
-        day[d.date] = WingstModel.predictProba(dm, WingstModel.vec(d.x, dfeats));
+        const ld = Math.min(7, Math.max(1, dayIdx(d.date + "T12:00")));
+        day[d.date] = calibrate(M.calib?.[site]?.[String(thr)], WingstModel.predictProba(dm, WingstModel.vec(d.x, dfeats)), ld);
       }
       out[site][thr] = { p, day, time: S.time };
     }

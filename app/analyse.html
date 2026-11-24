@@ -52,6 +52,19 @@
   </section>
 
   <section class="panel">
+    <div class="panel-head">
+      <h2>Wie oft stimmt die Prozentzahl?</h2>
+      <div class="thr-toggle" role="group" aria-label="Schwelle" id="relThr">
+        <button type="button" class="seg on" data-thr="12" aria-pressed="true">12+ kn</button>
+        <button type="button" class="seg" data-thr="15" aria-pressed="false">15+ kn</button>
+        <button type="button" class="seg" data-thr="20" aria-pressed="false">20+ kn</button>
+      </div>
+    </div>
+    <p class="hint">„kitebar %“ des lokalen Modells, sortiert nach Höhe: An wie vielen dieser Tage war es 2024–25 wirklich kitebar (mind. 2 h am Stück über der Schwelle)? Gerechnet wie in der App: jedes Jahr mit dem Modell des anderen Jahres. In Klammern: Anzahl Tage.</p>
+    <div id="rel"></div>
+  </section>
+
+  <section class="panel">
     <h2>Nach Jahreszeit</h2>
     <p class="hint">Bestes Modell je Jahreszeit und Vorlauf, Schwelle 12 kn. Zahl: Trefferwert (AUC).</p>
     <div id="season"></div>
