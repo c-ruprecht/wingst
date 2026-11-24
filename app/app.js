@@ -29,7 +29,7 @@ const state = {
   ensBias: null,     // richtungsabhängige Abweichung je Station/Modell
   ensCache: {},
   modelSel: load("model", "icon"),
-  thr: Number(load("thr", 12)),
+  thr: THRESHOLDS.includes(Number(load("thr", 14))) ? Number(load("thr", 14)) : 14,
   spot: load("spot", "zingst"),
   map: null,
   markers: []
@@ -51,7 +51,7 @@ function dayLabel(dateStr, i) {
 }
 const isWeekend = dateStr => [0, 6].includes(new Date(dateStr + "T12:00:00").getDay());
 const siteOf = sp => SPOT_SITE[sp.ref];
-const tooRare = (sp, thr) => siteOf(sp) === "barth" && thr >= 20;   // 20+ kn am Bodden: zu wenige Fälle im Training
+const tooRare = (sp, thr) => false;   // seit 14/18 kn (Wasser-Äquivalent) genug Fälle an beiden Stationen
 
 /* ---------- Daten holen ---------- */
 async function fetchJSON(url, timeoutMs = 25000) {
@@ -419,7 +419,7 @@ function drawWeek() {
   t.innerHTML = html + "</tbody>";
   t.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot)));
   $("#weekHint").innerHTML = state.local
-    ? `Zahl: Stunden am Stück ab ${state.thr} kn aus passender Richtung (lokales Modell). Darunter: Chance auf mind. ${MIN_RUN} h, „E“ = Anteil der Ensemble-Läufe.${state.thr >= 20 ? " Bodden bei 20+ kn: zu selten für eine Prognose." : ""}`
+    ? `Zahl: Stunden am Stück ab ${state.thr} kn aus passender Richtung (lokales Modell). Darunter: Chance auf mind. ${MIN_RUN} h, „E“ = Anteil der Ensemble-Läufe.`
     : `Zahl: längste Zeit am Stück (h) bei Tageslicht ab ${state.thr} kn aus passender Richtung (${MODEL_LABEL[state.modelSel]}, unkorrigiert – Korrekturmodell lädt noch).`;
 }
 
@@ -430,16 +430,17 @@ const pCls = p => p == null ? "kx" : p >= 0.75 ? "p4" : p >= P_ON ? "p3" : p >= 
 const cloudIcon = c => c == null ? "" : c < 20 ? "☀" : c < 60 ? "⛅" : "☁";
 
 const sunIcon = up => `<svg class="sico" viewBox="0 0 20 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12a5 5 0 0 1 10 0"/><path d="M2 12h16"/><path d="${up ? "M10 1v4M8 3l2-2 2 2" : "M10 1v4M8 3l2 2 2-2"}"/></svg>`;
+/* Bestes Rohmodell je Gebiet (Windanalyse 2024–25): Ostsee ICON, Bodden Mittel der drei */
+const BEST_RAW = { darss_ort: ["icon", "ICON"], barth: ["mean", "Mittel"] };
 function drawDetail() {
   const box = $("#detail");
   if (!state.fc) { box.innerHTML = ""; return; }
   const sp = SPOTS.find(s => s.id === state.spot);
   const ds = days(sp.id);
   const o = state.obs[sp.ref];
-  const thr = state.thr;
+  const [bm, bmLabel] = BEST_RAW[siteOf(sp)];
+  const [t1, t2] = THRESHOLDS;
   const blocks = ds.map((d, i) => {
-    const rare = tooRare(sp, thr);
-    const lr = d.local[thr];
     const o2 = state.fc.spots[sp.id];
     const rise = o2.sunrise[d.date], set = o2.sunset[d.date];
     const hm = s => s ? s.slice(11, 16) : "";
@@ -448,30 +449,23 @@ function drawDetail() {
     let firstRow = true;
     const cells = (fn) => { const f = firstRow; firstRow = false; return sunL(f) + d.hours.map(fn).join("") + sunR(f); };
     const offCls = h => h.dirMean != null && !inWindow(h.dirMean, sp.win) ? " off" : "";
-    const medRow = (k, label, title) => `<tr class="mrow"><th scope="row" title="${title}">${label}</th>${cells(h => {
-      const v = h[k]; return `<td class="${knCls(v)}${offCls(h)}">${v == null ? "" : Math.round(v)}</td>`; })}</tr>`;
-    const ed = d.ens?.[thr];
+    const ed = d.ens?.[t1];
     const ensTip = ed && ed.p != null ? WingstEns.MODELS.filter(m => ed.byModel[m.key] != null).map(m => `${m.label.replace(/ \(KI\)/, "")} ${pct(ed.byModel[m.key])}`).join(", ") : "";
-    const knRow = (m, label) => `<tr class="mrow"><th scope="row">${label}</th>${cells(h => {
-      const x = h.models[m]; return `<td class="${knCls(x.kn)}${offCls(h)}">${x.kn == null ? "–" : Math.round(x.kn)}</td>`; })}</tr>`;
+    const run = t => { const r = d.local[t]; return r && r.len ? `${t}+: <b>${r.len} h</b> ${spanText(r)}` : `${t}+: –`; };
+    const pRow = t => `<tr class="lrow"><th scope="row">Lokal ${t}+</th>${cells(h => {
+      const p = h.p[t]; return `<td class="${pCls(p)}${offCls(h)}" title="Chance auf ${t}+ kn">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>`;
     return `<section class="fday${isWeekend(d.date) ? " we" : ""}">
       <div class="day-h"><b>${dayLabel(d.date, i)}</b>
-        <span class="cmp">${rare ? "20+ kn am Bodden: zu selten für eine Prognose"
-          : lr ? `<b>lokal ${runText(lr)}</b> ${spanText(lr)}${d.pday[thr] != null ? ` · kitebar ${pct(d.pday[thr])}` : ""}`
-          : `${MODEL_LABEL[state.modelSel]} ${runText(d.runs[state.modelSel][thr])} ${spanText(d.runs[state.modelSel][thr])}`}${!rare && ed && ed.p != null ? ` · <span title="${ensTip}">Ensemble ${pct(ed.p)}</span>` : ""}</span></div>
-
+        <span class="cmp">${state.local ? `${run(t1)} · ${run(t2)}${d.pday[t1] != null ? ` · kitebar ${pct(d.pday[t1])}` : ""}` : ""}${ed && ed.p != null ? ` · <span title="${ensTip}">Ensemble ${pct(ed.p)}</span>` : ""}</span></div>
       <div class="ftable-wrap"><table class="ftable">
         <tbody>
           <tr class="hrow"><th scope="row">Uhr</th>${cells(h => `<td>${String(h.hour).padStart(2, "0")}</td>`)}</tr>
           <tr class="drow"><th scope="row">Richtung</th>${cells(h => `<td class="${offCls(h).trim()}" title="${compass(h.dirMean)}">${h.dirMean != null ? arrow(h.dirMean) : ""}</td>`)}</tr>
-          ${knRow("icon", "ICON kn")}${knRow("gfs", "GFS kn")}${knRow("ecmwf", "ECMWF kn")}
-          ${d.hasEns ? medRow("aifs", "AIFS kn", "ECMWF AIFS (KI), Median der 51 Läufe") + medRow("wn2", "WN2 kn", "Google WeatherNext 2 (KI), Median der 64 Läufe") : ""}
+          <tr class="mrow"><th scope="row" title="bestes Rohmodell für dieses Gebiet">${bmLabel} kn</th>${cells(h => {
+            const x = h.models[bm]; return `<td class="${knCls(x.kn)}${offCls(h)}">${x.kn == null ? "–" : Math.round(x.kn)}</td>`; })}</tr>
           ${d.hasNow ? `<tr class="mrow nrow"><th scope="row" title="ICON plus aktueller Messfehler (${d.nowErr > 0 ? "+" : ""}${d.nowErr.toFixed(1)} kn), klingt ab">Jetzt-korr.</th>${cells(h => `<td class="${h.now == null ? "kx" : knCls(h.now)}${offCls(h)}">${h.now == null ? "" : Math.round(h.now)}</td>`)}</tr>` : ""}
           <tr class="grow2"><th scope="row">Böen</th>${cells(h => { const g = h.models.icon.gust ?? h.models.gfs.gust; return `<td>${g == null ? "" : Math.round(g)}</td>`; })}</tr>
-          ${state.local ? `<tr class="lrow"><th scope="row">Lokal ${thr}+</th>${cells(h => {
-            const p = rare ? null : h.p[thr]; return `<td class="${pCls(p)}${offCls(h)}" title="Chance auf ${thr}+ kn">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>` : ""}
-          ${d.hasEns ? `<tr class="lrow erow"><th scope="row" title="Anteil der Ensemble-Läufe (5 Modelle gleich gewichtet) mit ${thr}+ kn aus passender Richtung, korrigiert">Ens ${thr}+</th>${cells(h => {
-            const p = h.ens ? h.ens[thr] : null; return `<td class="${pCls(p)}" title="Ensemble: ${p == null ? "–" : Math.round(p * 100) + " %"}">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>` : ""}
+          ${state.local ? pRow(t1) + pRow(t2) : ""}
           <tr class="wrow"><th scope="row">Wetter</th>${cells(h => `<td title="${h.cloud == null ? "" : Math.round(h.cloud) + " % Wolken"}">${h.precip > 0.2 ? "🌧" : cloudIcon(h.cloud)}</td>`)}</tr>
           <tr class="trow"><th scope="row">°C</th>${cells(h => `<td>${h.t2m == null ? "" : Math.round(h.t2m)}</td>`)}</tr>
         </tbody></table></div>
@@ -479,11 +473,12 @@ function drawDetail() {
   }).join("");
   box.innerHTML = `
     <div class="panel-head"><h2>${sp.name}</h2>
-      <span class="meta">${sp.water} · passende Richtung ${compass(sp.win[0])} bis ${compass(sp.win[1])} · Korrektur trainiert an ${siteOf(sp) === "darss_ort" ? "Darßer Ort" : "Barth"}</span></div>
+      <span class="meta">${sp.water} · passende Richtung ${compass(sp.win[0])} bis ${compass(sp.win[1])} · <a href="spotguide.html" id="toGuide">Spotguide</a></span></div>
     ${o ? `<p class="obsline">${arrow(o.dir ?? 0)} Gemessen ${STATIONS.find(s => s.id === sp.ref).name}, ${fmtTime(o.time)} Uhr: <b>${Math.round(o.kn)} kn</b> ${compass(o.dir)}${o.gust ? `, Böe ${Math.round(o.gust)} kn` : ""}</p>` : ""}
     <div class="days">${blocks}</div>
-    <div class="legend"><span>Wind (kn):</span>${KN_SCALE.map(([v, k], j) => `<span><i class="sw ${k}"></i>${v}${KN_SCALE[j + 1] ? "–" + KN_SCALE[j + 1][0] : "+"}</span>`).join("")}</div>
-    <div class="legend"><span>Lokal = Chance in % auf ${thr}+ kn:</span><span><i class="sw p1"></i>15–30</span><span><i class="sw p2"></i>30–50</span><span><i class="sw p3"></i>50–75</span><span><i class="sw p4"></i>75+</span><span>blasse Spalte: Richtung passt nicht</span></div>`;
+    <div class="legend"><span>${bmLabel} (kn):</span>${KN_SCALE.map(([v, k], j) => `<span><i class="sw ${k}"></i>${v}${KN_SCALE[j + 1] ? "–" + KN_SCALE[j + 1][0] : "+"}</span>`).join("")}</div>
+    <div class="legend"><span>Lokal = Chance in % auf Wind über der Schwelle (auf dem Wasser):</span><span><i class="sw p1"></i>15–30</span><span><i class="sw p2"></i>30–50</span><span><i class="sw p3"></i>50–75</span><span><i class="sw p4"></i>75+</span><span>blasse Spalte: Richtung passt nicht</span></div>`;
+  const g = $("#toGuide"); if (g) g.addEventListener("click", () => save("guide", sp.id));
 }
 
 /* ---------- Messstationen ---------- */
@@ -536,7 +531,6 @@ function drawLong() {
   const summary = [];
   let rows = "";
   for (const [site, lab] of [["darss_ort", "Ostsee"], ["barth", "Bodden"]]) {
-    if (site === "barth" && thr >= 20) continue;
     const P = longProb(site, ALL_DIRS, hb); if (!P) continue;
     const ps = hb.map(([d]) => P.daily[d]?.[thr]?.p ?? null);
     const valid = ps.filter(p => p != null);

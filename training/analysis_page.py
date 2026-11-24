@@ -42,7 +42,7 @@ for f in sorted(glob.glob(f"{RES}/7day_daily_oof_*.csv")):
 
 # Klima aus Messungen 2016–2025: Anteil kitebarer Tage je Monat (>= 2 h am Stück bei Tageslicht 7–19)
 for site in ("darss_ort", "barth"):
-    o = load_obs(DWD, site)
+    o = load_obs(DWD, site) * {"darss_ort": 1.0, "barth": 1.22}[site]   # Wind auf dem Wasser, wie im Training
     o = o[(o.index >= "2016-01-01") & (o.index < "2026-01-01")]
     d = pd.read_csv(f"{DWD}/{site}_wind.csv", dtype={"MESS_DATUM": str})
     d["time"] = pd.to_datetime(d["MESS_DATUM"], format="%Y%m%d%H", utc=True)
@@ -50,7 +50,7 @@ for site in ("darss_ort", "barth"):
     df = pd.DataFrame({"kn": o.values, "dir": wd.reindex(o.index).values}, index=o.index.tz_convert("Europe/Berlin"))
     df = df[(df.index.hour >= 7) & (df.index.hour <= 19)]
     clim = {}
-    for thr in (12, 15, 20):
+    for thr in (14, 18):
         def run(g):
             best = cur = 0; prev = None
             for t, v in g.kn.items():
@@ -62,9 +62,23 @@ for site in ("darss_ort", "barth"):
         clim[thr] = [round(float((days[days.index.month == m] >= 2).mean()), 3) for m in range(1, 13)]
     out["climate"][site] = clim
     # Richtungen in windigen Stunden (>= 12 kn) – 8 Sektoren
-    w = df[(df.kn >= 12) & df.dir.notna()]
+    w = df[(df.kn >= 14) & df.dir.notna()]
     sec = ((w.dir + 22.5) % 360 // 45).astype(int)
     out["dirs"][site] = [round(float(v), 3) for v in sec.value_counts(normalize=True).reindex(range(8)).fillna(0)]
+# Trefferquote je Prozentbereich (wie oft war es bei dieser Anzeige wirklich kitebar)
+BINS = [(0.9, 1.01, "90–100 %"), (0.7, 0.9, "70–90 %"), (0.5, 0.7, "50–70 %"), (0.3, 0.5, "30–50 %"), (0.1, 0.3, "10–30 %"), (0, 0.1, "unter 10 %")]
+out["reliability"] = []
+for f in sorted(glob.glob(f"{RES}/7day_daily_oof_*.csv")):
+    Dd = pd.read_csv(f).dropna(subset=["p_day"]); site, t = Dd.site[0], int(Dd.thr[0])
+    for g, leads in (("1–2", (1, 2)), ("3–4", (3, 4)), ("5–7", (5, 6, 7))):
+        x = Dd[Dd.lead_day.isin(leads)]
+        for lo, hi, lab in BINS:
+            y = x[(x.p_day >= lo) & (x.p_day < hi)]
+            out["reliability"].append(dict(site=site, thr=t, leads=g, bin=lab, n=int(len(y)),
+                                           rate=round(float(y.y.mean()), 3) if len(y) else None))
+# Faktoren Wasser/Modell je Spot (sar_spot_model.py) und Richtungen je Spot (spot_directions.py)
+sf = pd.read_csv(f"{RES}/sar300_spot_factors.csv")
+out["spotfactors"] = json.loads(sf.to_json(orient="records"))
 out["bias"] = json.load(open(f"{OUT.rsplit('/', 1)[0]}/model/ens_bias.json"))
 json.dump(out, open(OUT, "w"), ensure_ascii=False, indent=0)
 

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6e8a">
+<title>Spotguide – Wingst</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Wingst</h1>
+    <span class="sub">Kitewind Darß · Zingst · Bodden</span>
+  </div>
+  <nav class="nav" aria-label="Hauptmenü">
+    <a href="./">Vorhersage</a>
+    <a href="spotguide.html" aria-current="page">Spotguide</a>
+    <a href="analyse.html">Windanalyse</a>
+    <a href="modelle.html">Modelle</a>
+  </nav>
+</header>
+
+<main class="an">
+  <section class="mapbox" aria-label="Karte">
+    <div id="map" class="guidemap"></div>
+    <div class="layer-toggle" role="group" aria-label="Kartenansicht">
+      <button type="button" id="btnMap" class="seg on" aria-pressed="true">Karte</button>
+      <button type="button" id="btnSat" class="seg" aria-pressed="false">Satellit</button>
+    </div>
+  </section>
+  <p class="hint" id="pick">Spot auf der Karte antippen.</p>
+
+  <section class="panel" id="spot" aria-live="polite"></section>
+
+  <section class="notes">
+    <p>Kiten ist im gesamten Nationalpark Vorpommersche Boddenlandschaft verboten (einzige Ausnahme: Suhrendorf auf Ummanz). Die Spots liegen am Rand, also Grenzen, Schilfufer und Badezonen beachten. <a href="https://www.nationalpark-vorpommersche-boddenlandschaft.de/en/experience-recuperate/out-and-about-in-nature/on-the-water/surfing-and-kitesurfing" target="_blank" rel="noopener">Regeln des Nationalparks</a>.</p>
+    <p>Richtungen, Böigkeit und Welle: eigene Auswertung von 439 Sentinel-1-Radarbildern 2024–25 (Copernicus). Parken und Gastronomie: OpenStreetMap, live abgefragt. Karte © OpenStreetMap-Mitwirkende, OpenFreeMap.</p>
+  </section>
+</main>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="spots.js"></script>
+<script src="spotinfo.js"></script>
+<script src="spotguide.js"></script>
+</body>
+</html>

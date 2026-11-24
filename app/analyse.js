@@ -9,32 +9,32 @@ const M = {
 };
 const SECT = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
 const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-const SPOT_NAME = { zingst: "Zingst", prerow: "Prerow", born: "Born", fuhlendorf: "Fuhlendorf", saal: "Saal", pruchten: "Pruchten" };
+const SPOT_NAME = { zingst: "Zingst", prerow: "Prerow", born: "Born", fuhlendorf: "Fuhlendorf", saal: "Saal", pruchten: "Pruchten", dabitz: "Dabitz" };
 const f2 = v => v == null ? "–" : v.toFixed(2).replace(".", ",");
 const pc = v => v == null ? "–" : Math.round(v * 100) + " %";
 const qcls = v => v >= 0.88 ? "q3" : v >= 0.8 ? "q2" : v >= 0.72 ? "q1" : "q0";
-let D, thr = 12, relThr = 12;
+let D, DIRS = null, thr = 14, relThr = 14;
 
 /* Tabellen seitlich scrollbar machen, damit die Seite auf dem Handy nicht breiter wird */
 const put = (sel, html) => { $(sel).innerHTML = html.replace(/<table/g, '<div class="tscroll"><table').replace(/<\/table>/g, "</table></div>"); };
 const at = (site, t, lead) => D.skill.find(r => r.site === site && r.thr === t && r.lead === lead);
 const avg = (site, leads, k) => {
-  const v = leads.map(l => at(site, 12, l)?.[`auc_${k}`]).filter(x => x != null);
+  const v = leads.map(l => at(site, 14, l)?.[`auc_${k}`]).filter(x => x != null);
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
 };
 
 /* ---------- Kurz gesagt ---------- */
 function drawSummary() {
-  const d2 = at("darss_ort", 12, 2), c = D.climate.darss_ort[12];
+  const d2 = at("darss_ort", 14, 2), c = D.climate.darss_ort[14];
   const sf = D.spotfactors.map(s => s.sar_vs_mean3).filter(Boolean);
   const lo = Math.round((Math.min(...sf) - 1) * 100), hi = Math.round((Math.max(...sf) - 1) * 100);
   const dirs = D.dirs.darss_ort, sw_w = dirs[5] + dirs[6];
   $("#summary").innerHTML = [
     `Zingst und Prerow: Bis Tag 4 ist die lokale Zahl der beste Wert. ICON allein kündigt zwei Tage vorher nur ${pc(d2.hit_icon)} der kitebaren Tage an, das lokale Modell ${pc(d2.hit_local)}.`,
-    `Bodden: Dort ist das Mittel aus ICON, GFS und ECMWF am besten. Die lokale Korrektur bringt nichts, weil die Station Barth an Land steht.`,
+    `Bodden: Das Mittel aus ICON, GFS und ECMWF trennt windige und ruhige Tage am besten. Die Modelle zeigen dort aber zu wenig Wind; ob 14 kn auf dem Wasser erreicht werden, trifft die lokale Zahl besser.`,
     `Ab Tag 5 gibt es nur noch eine Tendenz. Dann hilft das Ensemble-Prozent mehr als jede einzelne Zahl.`,
     `Auf dem Wasser weht es ${lo}–${hi} % mehr, als die Modelle zeigen. Nur bei Südwind ist es weniger.`,
-    `Am windigsten ist es von Oktober bis Februar (Januar: ${pc(c[0])} der Tage kitebar), im Sommer etwa jeder zweite Tag. ${pc(sw_w)} des Windes ab 12 kn kommt aus Südwest bis West.`
+    `Am windigsten ist es von Oktober bis Februar (Januar: ${pc(c[0])} der Tage mit 14+ kn), im Sommer an etwa vier von zehn Tagen. ${pc(sw_w)} des Windes ab 14 kn kommt aus Südwest bis West.`
   ].map(t => `<li>${t}</li>`).join("");
 }
 
@@ -55,7 +55,7 @@ function drawTrust() {
 /* ---------- Trefferquote je Prozentbereich ---------- */
 function drawRel() {
   const G = ["1–2", "3–4", "5–7"];
-  const sites = relThr >= 20 ? ["darss_ort"] : ["darss_ort", "barth"];
+  const sites = ["darss_ort", "barth"];
   let h = "";
   for (const site of sites) {
     const R = D.reliability.filter(r => r.site === site && r.thr === relThr);
@@ -67,7 +67,6 @@ function drawRel() {
     }
     h += "</tbody></table>";
   }
-  if (relThr >= 20) h += `<p class="hint">Bodden bei 20+ kn: an 3 % der Tage, zu selten für eine Auswertung.</p>`;
   h += `<p class="hint">Bis Tag 4 stimmt die Anzeige gut. Ab Tag 5 war sie zu sicher, deshalb rechnet die App ab Tag 6 eine Eichung ein.</p>`;
   put("#rel", h);
 }
@@ -89,7 +88,7 @@ function lineChart(site) {
   return s + "</svg>";
 }
 function drawCharts() {
-  const sites = thr >= 20 ? ["darss_ort"] : ["darss_ort", "barth"];
+  const sites = ["darss_ort", "barth"];
   const legend = `<div class="legend chartlegend">${["local", "icon", "gfs", "ecmwf", "mean3"].map(k => `<span><i class="ln" style="background:${M[k].color}"></i>${M[k].label}</span>`).join("")}</div>`;
   put("#charts", `<div class="charts">${sites.map(s => `<figure><figcaption>${SITE_NAME[s]}</figcaption>${lineChart(s)}</figure>`).join("")}</div>${legend}`);
 }
@@ -97,12 +96,32 @@ function drawCharts() {
 /* ---------- Wind auf dem Wasser je Spot ---------- */
 function drawSpots() {
   const cols = ["W", "SW", "O", "S"];
-  const order = ["zingst", "prerow", "born", "fuhlendorf", "saal", "pruchten"];
+  const order = ["zingst", "prerow", "born", "fuhlendorf", "saal", "pruchten", "dabitz"];
   const R = order.map(k => D.spotfactors.find(s => s.spot === k)).filter(Boolean);
   const fx = v => v == null ? "–" : `${v > 1 ? "+" : ""}${Math.round((v - 1) * 100)} %`;
   let h = `<table class="atab num"><thead><tr><th>Spot</th><th>gesamt</th>${cols.map(l => `<th>${l}</th>`).join("")}</tr></thead><tbody>`;
   for (const r of R) h += `<tr><th>${SPOT_NAME[r.spot]}</th><td><b>${fx(r.sar_vs_mean3)}</b></td>${cols.map(k => `<td>${fx(r["m3_" + k])}</td>`).join("")}</tr>`;
   put("#spots", h + `</tbody></table><p class="hint">Die Modelle rechnen die Spots halb als Land und bremsen den Wind zu stark. Bei Südwind kommt der Wind über Land und ist auch auf dem Wasser schwächer. ICON liegt bis zu 30 % zu tief, GFS fast richtig. Die Bilder entstehen gegen 6 und 18 Uhr, Mittagsthermik ist nicht erfasst.</p>`);
+}
+
+/* ---------- Richtungen je Spot ---------- */
+const UFER = { "auflandig": "auf", "schräg auflandig": "schräg auf", "sideshore": "side", "schräg ablandig": "schräg ab", "ablandig": "ab" };
+function drawDirs() {
+  if (!DIRS) return;
+  const order = ["zingst", "prerow", "born", "fuhlendorf", "saal", "pruchten", "dabitz"];
+  let h = `<table class="atab dirtab"><thead><tr><th>Spot</th>${SECT.map(s => `<th>${s}</th>`).join("")}</tr></thead><tbody>`;
+  for (const sp of order) {
+    h += `<tr><th>${SPOT_NAME[sp]}</th>`;
+    for (const s of SECT) {
+      const r = DIRS.find(x => x.spot === sp && x.sektor === s);
+      if (!r) { h += "<td></td>"; continue; }
+      const off = r.ufer.includes("ab");
+      const cls = off ? "doff" : r.unruhe == null || r.n < 10 ? "dna" : r.unruhe <= 5 ? "q3" : r.unruhe <= 8 ? "q2" : "q1";
+      h += `<td class="${cls}" title="${r.ufer}, Streuung ${r.unruhe ?? "–"} %, ${r.n} Bilder, Welle ~${r.welle_cm} cm">${UFER[r.ufer]}<br><small>${off ? "" : r.welle_cm >= 30 ? "Welle" : r.welle_cm >= 15 ? "Kabbel" : "flach"}</small></td>`;
+    }
+    h += "</tr>";
+  }
+  put("#dirs", h + `</tbody></table><p class="hint">Grün: gleichmäßiger Wind, je dunkler desto sauberer. Grau: ablandig, oder zu wenige Bilder. Welle: über 30 cm bei 15 kn, Kabbel: 15–30 cm, flach: darunter (aus der freien Wasserstrecke gerechnet, nicht gemessen). Fahrt bei ablandigem Wind nur mit Begleitung.</p>`);
 }
 
 /* ---------- Klima ---------- */
@@ -120,9 +139,9 @@ function bars(vals, labels, max, color) {
 function drawClimate() {
   const c = D.climate.darss_ort;
   put("#climate", `<div class="clim">
-      <figure><figcaption>Kitebare Tage, 12+ kn (%)</figcaption>${bars(c[12], MONTHS, 0.75, "#8fd48a")}</figure>
-      <figure><figcaption>Kitebare Tage, 15+ kn (%)</figcaption>${bars(c[15], MONTHS, 0.75, "#f4d23f")}</figure>
-      <figure><figcaption>Windrichtung ab 12 kn (%)</figcaption>${bars(D.dirs.darss_ort, SECT, 0.6, "#0b6e8a")}</figure>
+      <figure><figcaption>Tage mit 14+ kn (%)</figcaption>${bars(c[14], MONTHS, 0.75, "#8fd48a")}</figure>
+      <figure><figcaption>Tage mit 18+ kn (%)</figcaption>${bars(c[18], MONTHS, 0.75, "#f4d23f")}</figure>
+      <figure><figcaption>Windrichtung ab 14 kn (%)</figcaption>${bars(D.dirs.darss_ort, SECT, 0.6, "#0b6e8a")}</figure>
     </div>
     <p class="hint">Südwest bis West ist am Zingster Nordstrand schräg ablandig, am Bodden in Born und Saal ideal. Nordost bringt am Strand auflandigen Wind, ist aber selten.</p>`);
 }
@@ -137,6 +156,7 @@ function toggle(id, cb) {
 fetch("analyse.json").then(r => r.json()).then(j => {
   D = j;
   drawSummary(); drawTrust(); drawRel(); drawCharts(); drawSpots(); drawClimate();
+  fetch("spot_directions.json").then(r => r.json()).then(x => { DIRS = x; drawDirs(); }).catch(() => {});
   toggle("relThr", t => { relThr = t; drawRel(); });
   toggle("thrSel", t => { thr = t; drawCharts(); });
 }).catch(e => { $("#summary").innerHTML = `<li>Auswertung konnte nicht geladen werden (${e.message}).</li>`; });

@@ -84,3 +84,9 @@ Copernicus Marine Service (Sentinel-1 L3 Wind) · IOW/BSH MARNET
 ## Windanalyse-Seite
 
 `app/analyse.html` (Menüpunkt „Windanalyse“): welches Modell an welchem Vorhersagetag am besten trifft, Treffer/Fehlalarme, Jahreszeiten, Richtungsfehler, Windklima 2016–2025. Zahlen: `python3 training/analysis_page.py results <dwd-ordner> app/analyse.json` (nutzt die kreuzvalidierten Tagesvorhersagen `results/7day_daily_oof_*.csv` aus `train_7day.py`).
+
+## Schwellen 14/18 kn, Spotguide (November 2026)
+
+- Kitebar = 2 h am Stück ab **14 kn**, zweite Stufe **18 kn**, jeweils Wind auf dem Wasser. Für den Bodden wird die Messung Barth mit 1,22 multipliziert (Median Wasser/Station aus 439 Sentinel-1-Bildern, `training/sar_spot_model.py`).
+- `app/spotguide.html`: Karte, je Spot Eignung nach Windrichtung (Ufer, Gleichmäßigkeit des Windes aus den Radarbildern, `training/spot_directions.py`), geschätzte Welle aus Fetch und Tiefe, Windklima, Ausstattung live aus OpenStreetMap (Overpass), Kurzbeschreibung mit Quellen (`app/spotinfo.js`).
+- Stündliche Tabelle: nur noch das beste Rohmodell (Ostsee ICON, Bodden Mittel der drei), lokale Chance für 14+ und 18+, Jetzt-Korrektur, Böen, Wetter.

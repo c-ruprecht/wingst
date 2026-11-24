@@ -94,33 +94,28 @@
  "sites": {
   "darss_ort": {
    "hourly": {
-    "12": "hourly_darss_ort_12.json",
-    "15": "hourly_darss_ort_15.json",
-    "20": "hourly_darss_ort_20.json"
+    "14": "hourly_darss_ort_14.json",
+    "18": "hourly_darss_ort_18.json"
    },
    "daily": {
-    "12": "daily_darss_ort_12.json",
-    "15": "daily_darss_ort_15.json",
-    "20": "daily_darss_ort_20.json"
+    "14": "daily_darss_ort_14.json",
+    "18": "daily_darss_ort_18.json"
    }
   },
   "barth": {
    "hourly": {
-    "12": "hourly_barth_12.json",
-    "15": "hourly_barth_15.json",
-    "20": "hourly_barth_20.json"
+    "14": "hourly_barth_14.json",
+    "18": "hourly_barth_18.json"
    },
    "daily": {
-    "12": "daily_barth_12.json",
-    "15": "daily_barth_15.json",
-    "20": "daily_barth_20.json"
+    "14": "daily_barth_14.json",
+    "18": "daily_barth_18.json"
    }
   }
  },
  "thresholds": [
-  12,
-  15,
-  20
+  14,
+  18
  ],
  "min_run": 2,
  "note": "Trainiert auf Open-Meteo Previous Runs 2024-2025 gegen DWD Dar\u00dfer Ort / Barth"

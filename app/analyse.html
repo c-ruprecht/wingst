@@ -20,6 +20,7 @@
   </div>
   <nav class="nav" aria-label="Hauptmenü">
     <a href="./">Vorhersage</a>
+    <a href="spotguide.html">Spotguide</a>
     <a href="analyse.html" aria-current="page">Windanalyse</a>
     <a href="modelle.html">Modelle</a>
   </nav>
@@ -33,7 +34,7 @@
 
   <section class="panel">
     <h2>Welchem Wert trauen?</h2>
-    <p class="hint">Bester Wert je Vorlauf, geprüft an allen Tagen 2024 und 2025. Kitebar heißt: zwischen 7 und 19 Uhr mindestens 2 Stunden am Stück über 12 kn.</p>
+    <p class="hint">Bester Wert je Vorlauf, geprüft an allen Tagen 2024 und 2025. Kitebar heißt: zwischen 7 und 19 Uhr mindestens 2 Stunden am Stück über 14 kn auf dem Wasser.</p>
     <div id="trust"></div>
   </section>
 
@@ -41,9 +42,8 @@
     <div class="panel-head">
       <h2>Wie oft stimmt die Prozentzahl?</h2>
       <div class="thr-toggle" role="group" aria-label="Schwelle" id="relThr">
-        <button type="button" class="seg on" data-thr="12" aria-pressed="true">12+ kn</button>
-        <button type="button" class="seg" data-thr="15" aria-pressed="false">15+ kn</button>
-        <button type="button" class="seg" data-thr="20" aria-pressed="false">20+ kn</button>
+        <button type="button" class="seg on" data-thr="14" aria-pressed="true">14+ kn</button>
+        <button type="button" class="seg" data-thr="18" aria-pressed="false">18+ kn</button>
       </div>
     </div>
     <p class="hint">Anteil der Tage, die bei dieser Anzeige wirklich kitebar waren. In Klammern die Zahl der Tage.</p>
@@ -54,9 +54,8 @@
     <div class="panel-head">
       <h2>Modelle im Vergleich</h2>
       <div class="thr-toggle" role="group" aria-label="Schwelle" id="thrSel">
-        <button type="button" class="seg on" data-thr="12" aria-pressed="true">12+ kn</button>
-        <button type="button" class="seg" data-thr="15" aria-pressed="false">15+ kn</button>
-        <button type="button" class="seg" data-thr="20" aria-pressed="false">20+ kn</button>
+        <button type="button" class="seg on" data-thr="14" aria-pressed="true">14+ kn</button>
+        <button type="button" class="seg" data-thr="18" aria-pressed="false">18+ kn</button>
       </div>
     </div>
     <p class="hint">Wie sicher ein Wert windige von ruhigen Tagen trennt (AUC). 1,0 ist perfekt, 0,5 Zufall. Waagrecht: Tage im Voraus.</p>
@@ -70,8 +69,14 @@
   </section>
 
   <section class="panel">
+    <h2>Welche Richtung an welchem Spot?</h2>
+    <p class="hint">Aus den Radarbildern: Lage zum Ufer, wie gleichmäßig der Wind auf dem Wasser war (Streuung im Umkreis von 1,5 km, Wind ab 8 kn) und geschätzte Welle bei 15 kn.</p>
+    <div id="dirs"></div>
+  </section>
+
+  <section class="panel">
     <h2>Windklima Darßer Ort</h2>
-    <p class="hint">Gemessen 2016–2025. Anteil kitebarer Tage je Monat und Herkunft des Windes ab 12 kn.</p>
+    <p class="hint">Gemessen 2016–2025. Anteil kitebarer Tage je Monat und Herkunft des Windes ab 14 kn.</p>
     <div id="climate"></div>
   </section>
 

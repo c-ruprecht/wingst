@@ -8,8 +8,10 @@ Hinweis: Überflüge um ~05 und ~17 UTC – Mittagsthermik ist nicht erfasst. Un
 import sys, glob, numpy as np, pandas as pd
 SAR, PREV = sys.argv[1], sys.argv[2]
 BBOX = (12.30, 54.28, 12.90, 54.52)
-SP = {"born": (54.380, 12.504), "saal": (54.318, 12.478), "fuhlendorf": (54.385, 12.580),
-      "pruchten": (54.383, 12.660), "prerow": (54.452, 12.575), "zingst": (54.445, 12.690)}
+SP = {"born": (54.381079, 12.504912), "saal": (54.312080, 12.480294), "fuhlendorf": (54.385, 12.580),
+      "pruchten": (54.386068, 12.659851), "prerow": (54.455506, 12.555672), "zingst": (54.442567, 12.707110),
+      "dabitz": (54.362277, 12.805830)}
+MODEL_AT = {"dabitz": "barth"}   # für Dabitz gibt es keine früheren Modellläufe -> Barth (6 km entfernt)
 SEC = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"]
 w = np.load(f"{SAR}/water_mask.npy"); H, W = w.shape
 ys, xs = np.where(w)
@@ -29,7 +31,7 @@ def model(site):
     return pd.DataFrame(out)
 
 
-M = {k: model(k) for k in SP}
+M = {k: model(MODEL_AT.get(k, k)) for k in SP}
 rows = []
 for f in sorted(glob.glob(f"{SAR}/wind/*.npz")):
     z = np.load(f); v = z["v"] * 1.944; t = pd.Timestamp(str(z["time"]))
