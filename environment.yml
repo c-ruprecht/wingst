@@ -15,6 +15,11 @@ dependencies:
   - eccodes>=2.34
   - netcdf4>=1.6         # Satellitendaten (NetCDF)
   - copernicusmarine>=2.0  # Sentinel-1-Wind von Copernicus Marine
+  # Flachwasserkarte (training/depth_map.py): Sentinel-2 von AWS Earth Search
+  - odc-stac>=0.3.9
+  - pystac-client>=0.7
+  - rasterio>=1.3
+  - dask
   # Modell und Auswertung
   - scikit-learn>=1.4
   - xgboost

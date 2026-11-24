@@ -13,6 +13,8 @@ training/
   train.py                   XGBoost je Station und Schwelle, Jahr-Auslassung, Weglass-Test, SHAP
   forward.py                 Faktorgruppen einzeln zu ICON hinzufügen (AUC-Gewinn)
   satellite.py               Sentinel-1-Wind: Strand- und Boddenfaktoren relativ zu den Stationen
+  depth_map.py               Flachwasserkarte der Bodden aus Sentinel-2 (4 Varianten, optional Tiefenpunkte)
+                             -> data/depth/vergleich.html, noch nicht in der App
   train_7day.py              7-Tage-Modell aus früheren Modellläufen (Vorlaufzeit 1–7 Tage):
                              stündliche Wahrscheinlichkeit + Tageswahrscheinlichkeit „kitebar“
 models/                      trainierte Modelle (XGBoost-JSON) + Merkmalsliste
@@ -30,6 +32,7 @@ python train.py   ../data ../data/dwd ../results
 python forward.py ../data ../data/dwd ../results
 python satellite.py ../data/sentinel1 ../data/dwd ../results
 python train_7day.py ../data ../data/dwd ../results ../models   # braucht data/openmeteo_prev
+python depth_map.py                          # Flachwasserkarte, Ergebnis data/depth/vergleich.html
 ```
 
 ## Stand (Nov 2026)
