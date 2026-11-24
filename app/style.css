@@ -259,3 +259,13 @@ a.btn { display: inline-block; text-decoration: none; margin-top: 6px; }
 .nav a { padding: 5px 9px; font-size: 13px; }
 
 .spotpick .seg.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Woche: Klammer über den Tagen – lokales Modell / Ensemble */
+.week tr.band th { padding: 0 2px 2px; }
+.week tr.band th span { display: block; border: 1.5px solid var(--muted); border-bottom: 0; border-radius: 6px 6px 0 0; height: 14px;
+  font-size: 10px; line-height: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.week tr.band th.split span { border-color: var(--accent); color: var(--accent); }
+.week td.split, .week th.split { border-left: 2px dashed var(--line); }
+.cell.ens .v { font-size: 13px; letter-spacing: -.02em; }
+.tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.tag.ens { color: var(--accent); border-color: var(--accent); }

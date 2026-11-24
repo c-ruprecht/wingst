@@ -391,36 +391,43 @@ function drawMarkers() {
 }
 
 /* ---------- Wochenübersicht ---------- */
+/* Bis einschließlich Tag 4 ist das lokale Modell besser und gut geeicht; danach zählt nur noch das Ensemble (Windanalyse). */
+const LOCAL_DAYS = 5;   // Heute + 4 Tage
+const useLocal = (i) => i < LOCAL_DAYS && !!state.local;
+const ensClass = p => p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0";
+
 function drawWeek() {
   const t = $("#week");
   if (!state.fc) { t.innerHTML = ""; return; }
   const ref = days(SPOTS[0].id);
+  const nLoc = ref.filter((d, i) => useLocal(i)).length, nEns = ref.length - nLoc;
   const head = (d, i) => {
     const x = new Date(d.date + "T12:00:00");
     const wd = i === 0 ? "Heute" : x.toLocaleDateString("de-DE", { weekday: "short" });
-    return `<th scope="col" class="${isWeekend(d.date) ? "we" : ""}">${wd}<br><small>${x.getDate()}.${x.getMonth() + 1}.</small></th>`;
+    return `<th scope="col" class="${isWeekend(d.date) ? "we" : ""}${i === nLoc && nLoc ? " split" : ""}">${wd}<br><small>${x.getDate()}.${x.getMonth() + 1}.</small></th>`;
   };
-  let html = `<thead><tr><th scope="col" class="spotcol">Spot</th>${ref.map(head).join("")}</tr></thead><tbody>`;
+  const band = `<tr class="band"><th class="spotcol"></th>${nLoc ? `<th colspan="${nLoc}"><span>Lokales Modell</span></th>` : ""}${nEns ? `<th colspan="${nEns}" class="split"><span>Ensemble</span></th>` : ""}</tr>`;
+  let html = `<thead>${band}<tr><th scope="col" class="spotcol">Spot</th>${ref.map(head).join("")}</tr></thead><tbody>`;
   for (const sp of SPOTS) {
     const ds = days(sp.id);
     html += `<tr class="${sp.id === state.spot ? "cur" : ""}"><th scope="row"><button type="button" class="linkbtn" data-spot="${sp.id}">${sp.short}</button></th>`;
-    for (const d of ds) {
-      const rare = tooRare(sp, state.thr);
-      const r = rare ? { len: 0 } : mainRun(d, state.thr);
-      const raw = d.runs[state.modelSel][state.thr];
-      const ep = d.ens?.[state.thr]?.p;
-      const sub = ep != null ? `<span class="sub">E ${Math.round(ep * 100)}%</span>` : d.local[state.thr] ? `<span class="sub">${MODEL_LABEL[state.modelSel]} ${raw.len || "–"}</span>` : "";
-      const p = d.pday[state.thr];
-      html += `<td class="cell ${rare ? "r0 rare" : runClass(r.len)}${isWeekend(d.date) ? " we" : ""}" data-spot="${sp.id}" title="${rare ? "zu selten für eine Prognose" : spanText(r)}">
-        <span class="v">${rare ? "·" : (r.len || "–")}</span>${p != null ? `<span class="pd">${Math.round(p * 100)}%</span>` : ""}${sub}</td>`;
-    }
+    ds.forEach((d, i) => {
+      const we = isWeekend(d.date) ? " we" : "", split = i === nLoc && nLoc ? " split" : "";
+      if (useLocal(i)) {
+        const r = mainRun(d, state.thr), p = d.pday[state.thr];
+        html += `<td class="cell ${runClass(r.len)}${we}${split}" data-spot="${sp.id}" title="${spanText(r)}"><span class="v">${r.len || "–"}</span>${p != null ? `<span class="pd">${Math.round(p * 100)}%</span>` : ""}</td>`;
+      } else {
+        const ep = d.ens?.[state.thr]?.p;
+        html += `<td class="cell ens ${ensClass(ep)}${we}${split}" data-spot="${sp.id}" title="Anteil der Ensemble-Läufe mit mind. ${MIN_RUN} h ab ${state.thr} kn"><span class="v">${ep == null ? "–" : Math.round(ep * 100) + "%"}</span></td>`;
+      }
+    });
     html += "</tr>";
   }
   t.innerHTML = html + "</tbody>";
   t.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot)));
   $("#weekHint").innerHTML = state.local
-    ? `Zahl: Stunden am Stück ab ${state.thr} kn aus passender Richtung (lokales Modell). Darunter: Chance auf mind. ${MIN_RUN} h, „E“ = Anteil der Ensemble-Läufe.`
-    : `Zahl: längste Zeit am Stück (h) bei Tageslicht ab ${state.thr} kn aus passender Richtung (${MODEL_LABEL[state.modelSel]}, unkorrigiert – Korrekturmodell lädt noch).`;
+    ? `Lokales Modell: Stunden am Stück ab ${state.thr} kn aus passender Richtung, darunter die Chance, dass der Tag kitebar ist (mind. ${MIN_RUN} h). Ensemble: Anteil von rund 240 Modellläufen, die das zeigen. Ab Tag 5 ist das lokale Modell nicht mehr besser, deshalb der Wechsel.`
+    : `Stunden am Stück ab ${state.thr} kn (${MODEL_LABEL[state.modelSel]}, unkorrigiert – Korrekturmodell lädt noch).`;
 }
 
 /* ---------- Detail eines Spots: stündliche Tabelle im Windfinder-Stil (3 Modelle + lokal) ---------- */
@@ -452,11 +459,15 @@ function drawDetail() {
     const ed = d.ens?.[t1];
     const ensTip = ed && ed.p != null ? WingstEns.MODELS.filter(m => ed.byModel[m.key] != null).map(m => `${m.label.replace(/ \(KI\)/, "")} ${pct(ed.byModel[m.key])}`).join(", ") : "";
     const run = t => { const r = d.local[t]; return r && r.len ? `${t}+: <b>${r.len} h</b> ${spanText(r)}` : `${t}+: –`; };
-    const pRow = t => `<tr class="lrow"><th scope="row">Lokal ${t}+</th>${cells(h => {
-      const p = h.p[t]; return `<td class="${pCls(p)}${offCls(h)}" title="Chance auf ${t}+ kn">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>`;
+    const loc = useLocal(i);
+    const pRow = t => loc ? `<tr class="lrow"><th scope="row">Lokal ${t}+</th>${cells(h => {
+      const p = h.p[t]; return `<td class="${pCls(p)}${offCls(h)}" title="Chance auf ${t}+ kn">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>`
+      : `<tr class="lrow erow"><th scope="row" title="Anteil der Ensemble-Läufe mit ${t}+ kn aus passender Richtung">Ens ${t}+</th>${cells(h => {
+      const p = h.ens ? h.ens[t] : null; return `<td class="${pCls(p)}${offCls(h)}">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>`;
     return `<section class="fday${isWeekend(d.date) ? " we" : ""}">
       <div class="day-h"><b>${dayLabel(d.date, i)}</b>
-        <span class="cmp">${state.local ? `${run(t1)} · ${run(t2)}${d.pday[t1] != null ? ` · kitebar ${pct(d.pday[t1])}` : ""}` : ""}${ed && ed.p != null ? ` · <span title="${ensTip}">Ensemble ${pct(ed.p)}</span>` : ""}</span></div>
+        <span class="cmp">${loc ? `<span class="tag">lokal</span> ${run(t1)} · ${run(t2)}${d.pday[t1] != null ? ` · kitebar ${pct(d.pday[t1])}` : ""}`
+          : ed && ed.p != null ? `<span class="tag ens">Ensemble</span> <span title="${ensTip}">${t1}+: ${pct(ed.p)}${d.ens?.[t2]?.p != null ? ` · ${t2}+: ${pct(d.ens[t2].p)}` : ""}</span>` : ""}</span></div>
       <div class="ftable-wrap"><table class="ftable">
         <tbody>
           <tr class="hrow"><th scope="row">Uhr</th>${cells(h => `<td>${String(h.hour).padStart(2, "0")}</td>`)}</tr>
@@ -465,7 +476,7 @@ function drawDetail() {
             const x = h.models[bm]; return `<td class="${knCls(x.kn)}${offCls(h)}">${x.kn == null ? "–" : Math.round(x.kn)}</td>`; })}</tr>
           ${d.hasNow ? `<tr class="mrow nrow"><th scope="row" title="ICON plus aktueller Messfehler (${d.nowErr > 0 ? "+" : ""}${d.nowErr.toFixed(1)} kn), klingt ab">Jetzt-korr.</th>${cells(h => `<td class="${h.now == null ? "kx" : knCls(h.now)}${offCls(h)}">${h.now == null ? "" : Math.round(h.now)}</td>`)}</tr>` : ""}
           <tr class="grow2"><th scope="row">Böen</th>${cells(h => { const g = h.models.icon.gust ?? h.models.gfs.gust; return `<td>${g == null ? "" : Math.round(g)}</td>`; })}</tr>
-          ${state.local ? pRow(t1) + pRow(t2) : ""}
+          ${state.local || !loc ? pRow(t1) + pRow(t2) : ""}
           <tr class="wrow"><th scope="row">Wetter</th>${cells(h => `<td title="${h.cloud == null ? "" : Math.round(h.cloud) + " % Wolken"}">${h.precip > 0.2 ? "🌧" : cloudIcon(h.cloud)}</td>`)}</tr>
           <tr class="trow"><th scope="row">°C</th>${cells(h => `<td>${h.t2m == null ? "" : Math.round(h.t2m)}</td>`)}</tr>
         </tbody></table></div>
@@ -477,7 +488,7 @@ function drawDetail() {
     ${o ? `<p class="obsline">${arrow(o.dir ?? 0)} Gemessen ${STATIONS.find(s => s.id === sp.ref).name}, ${fmtTime(o.time)} Uhr: <b>${Math.round(o.kn)} kn</b> ${compass(o.dir)}${o.gust ? `, Böe ${Math.round(o.gust)} kn` : ""}</p>` : ""}
     <div class="days">${blocks}</div>
     <div class="legend"><span>${bmLabel} (kn):</span>${KN_SCALE.map(([v, k], j) => `<span><i class="sw ${k}"></i>${v}${KN_SCALE[j + 1] ? "–" + KN_SCALE[j + 1][0] : "+"}</span>`).join("")}</div>
-    <div class="legend"><span>Lokal = Chance in % auf Wind über der Schwelle (auf dem Wasser):</span><span><i class="sw p1"></i>15–30</span><span><i class="sw p2"></i>30–50</span><span><i class="sw p3"></i>50–75</span><span><i class="sw p4"></i>75+</span><span>blasse Spalte: Richtung passt nicht</span></div>`;
+    <div class="legend"><span>Lokal / Ens = Chance in % auf Wind über der Schwelle (auf dem Wasser):</span><span><i class="sw p1"></i>15–30</span><span><i class="sw p2"></i>30–50</span><span><i class="sw p3"></i>50–75</span><span><i class="sw p4"></i>75+</span><span>blasse Spalte: Richtung passt nicht</span></div>`;
   const g = $("#toGuide"); if (g) g.addEventListener("click", () => save("guide", sp.id));
 }
 
