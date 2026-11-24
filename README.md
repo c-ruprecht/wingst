@@ -32,6 +32,7 @@ python train.py   ../data ../data/dwd ../results
 python forward.py ../data ../data/dwd ../results
 python satellite.py ../data/sentinel1 ../data/dwd ../results
 python train_7day.py ../data ../data/dwd ../results ../models   # braucht data/openmeteo_prev
+python import_uba_zingst.py <UBA-Lieferung.zip>   # UBA Zingst 2016–25 -> data/uba, Vergleich -> results/uba_zingst_vergleich.csv
 curl -L -o ../data/depth/Elevation-Bathymetry.zip https://gdi.bsh.de/de/data/Elevation-Bathymetry.zip
 python depth_layer.py                        # Tiefenebene der App -> app/depth.geojson
 ```
@@ -75,7 +76,7 @@ Details: `results/7day_daily_skill.csv`, `results/7day_hourly_auc.csv`, `results
 
 ## Datenquellen
 
-DWD Open Data · DMI Open Data (CC BY 4.0) · Open-Meteo (CC BY 4.0, nicht-kommerziell) ·
+DWD Open Data · Umweltbundesamt, Station Zingst DEUB028 (DL-DE-BY-2.0, Kopie in `reference/`, Format umgestellt) · DMI Open Data (CC BY 4.0) · Open-Meteo (CC BY 4.0, nicht-kommerziell) ·
 Copernicus Marine Service (Sentinel-1 L3 Wind) · IOW/BSH MARNET
 
 ## Erweiterung November 2026: Thermik, Bodden, Nowcast

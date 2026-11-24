@@ -385,6 +385,12 @@ function drawMarkers() {
     el.innerHTML = `${o.dir != null ? arrow(o.dir, "arrow big") : ""}<span class="lab"><b>${Math.round(o.kn)} kn</b> ${compass(o.dir)}<small>${st.name}</small></span>`;
     state.markers.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([st.lon, st.lat]).addTo(state.map));
   }
+  for (const rp of REF_POINTS) {
+    const e2 = document.createElement("div");
+    e2.className = "stn-mk ref"; e2.title = rp.title;
+    e2.innerHTML = `<span class="sq"></span><span class="lab"><b>${rp.name}</b><small>${rp.note}</small></span>`;
+    state.markers.push(new maplibregl.Marker({ element: e2, anchor: "left" }).setLngLat([rp.lon, rp.lat]).addTo(state.map));
+  }
   const el = document.createElement("a");
   el.className = "stn-mk sill"; el.href = SILL.page; el.target = "_blank"; el.rel = "noopener";
   el.innerHTML = `<span class="sq"></span><span class="lab"><b>Darßer Schwelle</b><small>Messmast, Diagramm unten</small></span>`;

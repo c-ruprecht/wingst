@@ -18,6 +18,15 @@ const STATIONS = [
   { id: "gedser",  name: "Gedser (DK)",  src: "dmi", sid: "06149", lat: 54.5687, lon: 11.9435 }
 ];
 
+/* Referenzpunkte ohne Live-Daten. UBA Zingst: Luftmessstation, Wind in 20 m, Stundenwerte 2016–2025
+   (training/import_uba_zingst.py, results/uba_zingst_vergleich.csv). Nach Westen abgeschirmt:
+   bei SW–NW nur 40–50 % des Windes am Darßer Ort, bei O–S etwa gleich viel. */
+const REF_POINTS = [
+  { id: "uba_zingst", name: "UBA Zingst", lat: 54.436836, lon: 12.724964,
+    note: "Referenz-Messmast 20 m, 2016–25",
+    title: "Umweltbundesamt, Station DEUB028. Stundenwerte 2016–2025, keine Live-Daten. Nach Westen abgeschirmt: bei Wind aus SW–NW misst er nur 40–50 % des Windes am Darßer Ort, bei O–S etwa gleich viel. Daher kein Maß für den Strand, nur Vergleich." }
+];
+
 const SILL = { name: "Darßer Schwelle", lat: 54.70, lon: 12.70,
   plot: "https://www.iow.de/files/forschung/mediathek/marnet/images/weekly/ds_ws_en.png",
   plotDir: "https://www.iow.de/files/forschung/mediathek/marnet/images/weekly/ds_wd_en.png",

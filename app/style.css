@@ -75,6 +75,8 @@ main { max-width: 1000px; margin: 0 auto; padding: 12px 16px 32px; display: grid
 .stn-mk .lab { display: grid; background: rgba(21,35,42,.85); color: #fff; border-radius: 5px; padding: 1px 6px; font-size: 12px; line-height: 1.2; }
 .stn-mk small { font-size: 10px; opacity: .85; }
 .stn-mk .sq { width: 12px; height: 12px; background: #15232a; border: 2px solid #fff; }
+.stn-mk.ref .sq { background: #fff; border-color: #15232a; transform: rotate(45deg); width: 10px; height: 10px; }
+.stn-mk.ref .lab { background: rgba(21,35,42,.6); }
 .arrow { width: 20px; height: 20px; flex: none; display: inline-block; vertical-align: middle; }
 .arrow path { fill: currentColor; }
 .arrow.big { width: 30px; height: 30px; color: #0b6e8a; filter: drop-shadow(0 0 2px #fff); }
