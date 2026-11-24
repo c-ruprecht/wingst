@@ -86,7 +86,7 @@ def extract(ds, label, step_days=1, start=START, max_lead_h=None, wind_only=Fals
             ren.update({v: k for k, v in vars_.items() if v})
             df = df.rename(columns=ren)
             if "lead" in df:
-                df["lead_h"] = pd.to_timedelta(df["lead"]).dt.total_seconds() / 3600 if not np.issubdtype(df["lead"].dtype, np.number) else df["lead"]
+                df["lead_h"] = df["lead"] if pd.api.types.is_numeric_dtype(df["lead"]) and not pd.api.types.is_timedelta64_dtype(df["lead"]) else pd.to_timedelta(df["lead"]).dt.total_seconds() / 3600
                 df = df.drop(columns="lead")
             cols = [c for c in ["init_time", "lead_h", "member", "u10", "v10", "t2m", "msl"] if c in df]
             df[cols].to_csv(fn + ".tmp", index=False, compression="gzip")

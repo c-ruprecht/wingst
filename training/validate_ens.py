@@ -26,7 +26,7 @@ DATA, RES, MODEL_DIR = DATA or "../data", RES or "../results", MODEL_DIR or "../
 SITES = ("darss_ort", "barth")
 THRS = (14, 18)
 MIN_RUN = 2
-BIAS_KEY = {"ifs_ens": "ecmwf", "aifs_ens": "ecmwf", "gefs": "gfs", "icon_eps": "icon", "wn2": None}
+BIAS_KEY = {"ifs_ens": "ecmwf", "aifs_ens": "ecmwf", "aifs_single": "ecmwf", "gefs": "gfs", "icon_eps": "icon", "wn2": None}
 TZ = "Europe/Berlin"
 
 
@@ -51,6 +51,10 @@ def ens_daily(path, site, site_bias, key):
     """Je (Startzeit, Ortsdatum): Anteil der Läufe mit Lauf >= MIN_RUN h über Schwelle, je Schwelle."""
     d = pd.read_csv(path, parse_dates=["init_time"])
     d = d.dropna(subset=["u10", "v10"])
+    if not pd.api.types.is_numeric_dtype(d["lead_h"]):      # ältere Downloads: "0 days 06:00:00"
+        d["lead_h"] = pd.to_timedelta(d["lead_h"]).dt.total_seconds() / 3600
+    if "member" not in d:                                    # Einzellauf (z. B. AIFS single)
+        d["member"] = 0
     out = []
     hours = np.arange(0, 361)
     for init, g in d.groupby("init_time"):
@@ -119,7 +123,7 @@ def main():
         y = obs_labels(site)
         src = {}
         for path in sorted(glob.glob(f"{DATA}/ai_history/*_{site}.csv.gz")):
-            label = os.path.basename(path).replace(f"_{site}.csv.gz", "")
+            label = os.path.basename(path).replace(f"_{site}.csv.gz", "").replace("-", "_")
             if label not in BIAS_KEY:
                 continue
             print("  ", site, label, flush=True)
@@ -131,7 +135,8 @@ def main():
             continue
         # Mittel der Modelle (gleich gewichtet), nur wo alle vorhandenen Modelle des Tages da sind
         allm = pd.concat([e.assign(src=k) for k, e in src.items()])
-        mean = allm.groupby(["local_date", "lead_day"])[[f"p{t}" for t in THRS]].mean().reset_index().assign(src="mittel")
+        # Einzelläufe (AIFS single) nur einzeln bewerten, nicht ins Mittel der Ensemble-Prozente
+        mean = allm[~allm.src.str.endswith("single")].groupby(["local_date", "lead_day"])[[f"p{t}" for t in THRS]].mean().reset_index().assign(src="mittel")
         allm = pd.concat([allm, mean])
         allm["local_date"] = pd.to_datetime(allm.local_date).dt.date
         m = allm.merge(y, on="local_date")
