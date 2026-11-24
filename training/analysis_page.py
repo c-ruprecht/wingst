@@ -40,11 +40,11 @@ for f in sorted(glob.glob(f"{RES}/7day_daily_oof_*.csv")):
             row["auc_local"] = auc(s.y, s.p_day)
             out["season"].append(row)
 
-# Klima aus Messungen 2016–2025: Anteil kitebarer Tage je Monat (>= 2 h am Stück bei Tageslicht 7–19)
+# Klima aus Messungen ab 2016: Anteil kitebarer Tage je Monat (>= 2 h am Stück bei Tageslicht 7–19)
 for site in ("darss_ort", "barth"):
     o = load_obs(DWD, site)
     o = o * water_factor(site, o.index)   # Wind auf dem Wasser, wie im Training
-    o = o[(o.index >= "2016-01-01") & (o.index < "2026-01-01")]
+    o = o[o.index >= "2016-01-01"]   # bis gestern, laufendes Jahr mit Punkten in den Boxplots
     d = pd.read_csv(f"{DWD}/{site}_wind.csv", dtype={"MESS_DATUM": str})
     d["time"] = pd.to_datetime(d["MESS_DATUM"], format="%Y%m%d%H", utc=True)
     wd = pd.to_numeric(d.set_index("time")["D"], errors="coerce").where(lambda x: x >= 0)
@@ -61,6 +61,12 @@ for site in ("darss_ort", "barth"):
         days = df.groupby(df.index.date).apply(lambda g: run(g) if len(g) >= 10 else np.nan).dropna()
         days.index = pd.to_datetime(days.index)
         clim[thr] = [round(float((days[days.index.month == m] >= 2).mean()), 3) for m in range(1, 13)]
+        # je Jahr und Monat (für die Boxplots), nur Monate mit mindestens 25 Messtagen
+        byy = {}
+        for (y, m), g in days.groupby([days.index.year, days.index.month]):
+            if len(g) >= 25:
+                byy.setdefault(str(y), [None] * 12)[m - 1] = round(float((g >= 2).mean()), 3)
+        out.setdefault("climate_years", {}).setdefault(site, {})[str(thr)] = byy
     out["climate"][site] = clim
     # Richtungen in windigen Stunden (>= 12 kn) – 8 Sektoren
     w = df[(df.kn >= 14) & df.dir.notna()]

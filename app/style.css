@@ -269,3 +269,7 @@ a.btn { display: inline-block; text-decoration: none; margin-top: 6px; }
 .cell.ens .v { font-size: 13px; letter-spacing: -.02em; }
 .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
 .tag.ens { color: var(--accent); border-color: var(--accent); }
+svg.chart.box .whisk { stroke: var(--muted); stroke-width: 1; }
+svg.chart.box .med { stroke: var(--ink, #1a2a33); stroke-width: 2; }
+svg.chart.box .pt { fill: #4b5b64; fill-opacity: .7; }
+svg.chart.box .pt.last { fill: var(--accent); fill-opacity: 1; stroke: #fff; stroke-width: .8; }

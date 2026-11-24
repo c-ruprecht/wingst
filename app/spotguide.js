@@ -150,7 +150,7 @@ function select(id, scroll) {
     </div>
     <div class="tscroll"><table class="atab"><thead><tr><th>Wind aus</th><th>Ufer</th><th>Wind</th><th>Wasser bei 15 kn</th></tr></thead><tbody>${tbl}</tbody></table></div>
     <p class="hint">„Sauber“ heißt: Auf den Radarbildern war der Wind im Umkreis von 1,5 km sehr gleichmäßig. Welle aus der freien Wasserstrecke gerechnet, nicht gemessen.</p>
-    ${c ? `<h3>Wie oft weht es? (Tage mit 14+ kn, ${site === "barth" ? "Bodden, aus Messung Barth" : "Messung Darßer Ort"})</h3>${bars(c[14], "#8fd48a")}` : ""}
+    ${c ? `<h3>Wie oft weht es? (Tage mit 14+ kn, ${site === "barth" ? "Bodden, aus Messung Barth" : "Messung Darßer Ort"})</h3>${ANA?.climate_years?.[site] ? boxplot(ANA.climate_years[site][14], "#8fd48a") : bars(c[14], "#8fd48a")}` : ""}
     <h3>Vor Ort</h3><div id="osm"><p class="hint">Lade Daten aus OpenStreetMap …</p></div>
     <p class="hint">Quellen: ${info.src.map(([n, u]) => u ? `<a href="${u}" target="_blank" rel="noopener">${n}</a>` : n).join(" · ")}</p>`;
   $("#toFc").addEventListener("click", () => save("spot", id));
