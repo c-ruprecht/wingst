@@ -13,8 +13,8 @@ training/
   train.py                   XGBoost je Station und Schwelle, Jahr-Auslassung, Weglass-Test, SHAP
   forward.py                 Faktorgruppen einzeln zu ICON hinzufügen (AUC-Gewinn)
   satellite.py               Sentinel-1-Wind: Strand- und Boddenfaktoren relativ zu den Stationen
-  depth_map.py               Flachwasserkarte der Bodden aus Sentinel-2 (4 Varianten, optional Tiefenpunkte)
-                             -> data/depth/vergleich.html, noch nicht in der App
+  depth_layer.py             Tiefenebene der App aus dem BSH-Geländemodell (50 m) -> app/depth.geojson
+  depth_map.py               Vergleich Satellit/EMODnet/BSH an bekannten Flächen -> data/depth/vergleich.html
   train_7day.py              7-Tage-Modell aus früheren Modellläufen (Vorlaufzeit 1–7 Tage):
                              stündliche Wahrscheinlichkeit + Tageswahrscheinlichkeit „kitebar“
 models/                      trainierte Modelle (XGBoost-JSON) + Merkmalsliste
@@ -32,7 +32,8 @@ python train.py   ../data ../data/dwd ../results
 python forward.py ../data ../data/dwd ../results
 python satellite.py ../data/sentinel1 ../data/dwd ../results
 python train_7day.py ../data ../data/dwd ../results ../models   # braucht data/openmeteo_prev
-python depth_map.py                          # Flachwasserkarte, Ergebnis data/depth/vergleich.html
+curl -L -o ../data/depth/Elevation-Bathymetry.zip https://gdi.bsh.de/de/data/Elevation-Bathymetry.zip
+python depth_layer.py                        # Tiefenebene der App -> app/depth.geojson
 ```
 
 ## Stand (Nov 2026)

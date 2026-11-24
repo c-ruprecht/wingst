@@ -47,6 +47,13 @@
     <div class="layer-toggle" role="group" aria-label="Kartenansicht">
       <button type="button" id="btnMap" class="seg on" aria-pressed="true">Karte</button>
       <button type="button" id="btnSat" class="seg" aria-pressed="false">Satellit</button>
+      <button type="button" id="btnDepth" class="seg depth-btn" aria-pressed="true">Tiefe</button>
+    </div>
+    <div class="depth-legend" id="depthLegend" aria-label="Legende Wassertiefe">
+      <span><i class="sw st"></i>unter 0,8 m</span>
+      <span><i class="sw fl"></i>0,8–1,5 m</span>
+      <span><i class="ln"></i>2 m <i class="ln d"></i>3 m</span>
+      <span><i class="sw ri"></i>Fahrrinne</span>
     </div>
   </section>
 
@@ -70,7 +77,7 @@
 
   <section class="notes">
     <p>Modelle über Open-Meteo, Messungen von DWD (Bright Sky) und DMI. Wie die Werte entstehen: <a href="modelle.html">Modelle</a>. Wie gut sie treffen: <a href="analyse.html">Windanalyse</a>.</p>
-    <p>Karte © OpenStreetMap-Mitwirkende, OpenFreeMap. Satellit: Sentinel-2 cloudless, EOX (enthält modifizierte Copernicus-Sentinel-Daten 2020). Darßer Schwelle: IOW/BSH.</p>
+    <p>Karte © OpenStreetMap-Mitwirkende, OpenFreeMap. Satellit: Sentinel-2 cloudless, EOX (enthält modifizierte Copernicus-Sentinel-Daten 2020). Darßer Schwelle: IOW/BSH. Wassertiefen: BSH, Digitales Geländemodell 50 m, bezogen auf Mittelwasser – keine Navigationsgrundlage.</p>
     <p>Kiten ist im gesamten Nationalpark Vorpommersche Boddenlandschaft verboten (Ausnahme: Suhrendorf auf Ummanz). Die Spots liegen am Rand, Grenzen und Badezonen beachten.</p>
   </section>
 </main>
