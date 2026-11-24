@@ -27,3 +27,14 @@ jobs:
           tar -czf "wingst-${STAMP}.tar.gz" -C out .
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Vorhersage-Archiv ${STAMP:0:7}" --notes "Automatisch: Ensemble- und Modellvorhersagen, zweimal täglich (archive/fetch_archive.py)." --prerelease
           gh release upload "$TAG" "wingst-${STAMP}.tar.gz" --clobber
+      - name: Repo aktiv halten (GitHub stoppt Zeitpläne nach 60 Tagen ohne Aktivität)
+        run: |
+          STAMP=$(cat out/STAMP)
+          # einmal pro Woche (montags beim Vormittagslauf) eine Statuszeile committen
+          if [ "$(date -u +%u)" = "1" ] && [ "$(date -u +%H)" -lt 12 ]; then
+            echo "Letzter Archivlauf: ${STAMP}" > archive/STATUS.md
+            git config user.name "wingst-archiv"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add archive/STATUS.md
+            git commit -m "Archiv: Status ${STAMP}" && git push || true
+          fi
