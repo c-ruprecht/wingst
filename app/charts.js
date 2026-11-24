@@ -39,3 +39,22 @@ function boxplot(byYear, color, max = 0.8) {
   s += `<rect x="${L + 200}" y="${H - 11}" width="10" height="8" rx="1" fill="${color}" fill-opacity=".55"/><text x="${L + 214}" y="${H - 4}" class="ax">mittlere Hälfte</text>`;
   return s + "</svg>";
 }
+
+/* ---- Windrichtung je Monat, gleiche Spaltenbreite wie boxplot() ---- */
+const DIR8 = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
+const BX = { W: 340, L: 26 }, colX = m => BX.L + m * (BX.W - BX.L) / 12 + (BX.W - BX.L) / 24;
+
+/** Mini-Windrose je Monat unter dem Boxplot: Blätter zeigen, woher der Wind kommt (Länge und Deckkraft = Anteil) */
+function dirRoses(rows) {
+  let s = `<svg viewBox="0 0 ${BX.W} 46" class="chart dirs">`;
+  rows.forEach((r, m) => {
+    const cx = colX(m), cy = 15, R = 13, mx = Math.max(...r.sec, 0.01);
+    s += `<circle cx="${cx}" cy="${cy}" r="${R}" class="rose-bg"/>`;
+    r.sec.forEach((p, k) => {
+      if (p < 0.02) return;
+      const a1 = (k * 45 - 20) * Math.PI / 180, a2 = (k * 45 + 20) * Math.PI / 180, rr = R * Math.sqrt(p / mx);
+      s += `<path d="M${cx},${cy} L${cx + rr * Math.sin(a1)},${cy - rr * Math.cos(a1)} A${rr},${rr} 0 0 1 ${cx + rr * Math.sin(a2)},${cy - rr * Math.cos(a2)} Z" class="petal" fill-opacity="${0.35 + 0.65 * p / mx}"><title>${MONTHS_SHORT[m]} ${DIR8[k]}: ${Math.round(p * 100)} %</title></path>`;
+    });
+  });
+  return s + `<text x="${BX.L}" y="42" class="ax">Rosen: woher der Wind kommt (oben = Nord)</text></svg>`;
+}

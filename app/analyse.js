@@ -137,10 +137,10 @@ function bars(vals, labels, max, color) {
   return s + "</svg>";
 }
 function drawClimate() {
-  const c = D.climate.darss_ort, cy = D.climate_years?.darss_ort;
+  const c = D.climate.darss_ort, cy = D.climate_years?.darss_ort, dm = D.dirs_month?.darss_ort;
   put("#climate", `<div class="clim">
-      <figure><figcaption>Tage mit 14+ kn (%)</figcaption>${cy ? boxplot(cy[14], "#8fd48a") : bars(c[14], MONTHS, 0.75, "#8fd48a")}</figure>
-      <figure><figcaption>Tage mit 18+ kn (%)</figcaption>${cy ? boxplot(cy[18], "#f4d23f") : bars(c[18], MONTHS, 0.75, "#f4d23f")}</figure>
+      <figure><figcaption>Tage mit 14+ kn (%)</figcaption>${cy ? boxplot(cy[14], "#8fd48a") + (dm ? dirRoses(dm[14]) : "") : bars(c[14], MONTHS, 0.75, "#8fd48a")}</figure>
+      <figure><figcaption>Tage mit 18+ kn (%)</figcaption>${cy ? boxplot(cy[18], "#f4d23f") + (dm ? dirRoses(dm[18]) : "") : bars(c[18], MONTHS, 0.75, "#f4d23f")}</figure>
       <figure><figcaption>Windrichtung ab 14 kn (%)</figcaption>${bars(D.dirs.darss_ort, SECT, 0.6, "#0b6e8a")}</figure>
     </div>
     <p class="hint">Südwest bis West ist am Zingster Nordstrand schräg ablandig, am Bodden in Born und Saal ideal. Nordost bringt am Strand auflandigen Wind, ist aber selten.</p>`);

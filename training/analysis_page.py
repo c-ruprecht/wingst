@@ -68,6 +68,17 @@ for site in ("darss_ort", "barth"):
                 byy.setdefault(str(y), [None] * 12)[m - 1] = round(float((g >= 2).mean()), 3)
         out.setdefault("climate_years", {}).setdefault(site, {})[str(thr)] = byy
     out["climate"][site] = clim
+    # Windrichtung je Monat bei 14+/18+ kn (für die Mini-Windrosen)
+    dm = {}
+    for thr in (14, 18):
+        rows = []
+        for m in range(1, 13):
+            x = df[(df.kn >= thr) & (df.index.month == m)].dropna(subset=["dir"])
+            sec = ((x["dir"] + 22.5) % 360 // 45).astype(int)
+            share = sec.value_counts(normalize=True).reindex(range(8)).fillna(0)
+            rows.append({"sec": [round(float(v), 3) for v in share], "n": int(len(x))})
+        dm[str(thr)] = rows
+    out.setdefault("dirs_month", {})[site] = dm
     # Richtungen in windigen Stunden (>= 12 kn) – 8 Sektoren
     w = df[(df.kn >= 14) & df.dir.notna()]
     sec = ((w.dir + 22.5) % 360 // 45).astype(int)

@@ -277,3 +277,6 @@ svg.chart.box .pt.last { fill: var(--accent); fill-opacity: 1; stroke: #fff; str
 .top .nav { order: 3; }
 .top .controls { order: 2; margin-left: auto; }
 @media (max-width: 700px) { .top .controls { order: 4; margin-left: 0; } }
+svg.chart.dirs { display: block; margin-top: 4px; }
+svg.chart.dirs .rose-bg { fill: none; stroke: var(--line); stroke-width: .6; }
+svg.chart.dirs .petal { fill: #0b6e8a; }
