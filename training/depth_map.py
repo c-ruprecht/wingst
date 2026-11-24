@@ -366,8 +366,12 @@ def page(ds, flat, wm, cal, picked, out):
                 c, mk = crop(flat[k] * cal[k]["a"] + cal[k]["c"], lat, lon)
                 src = png(c.values, cmap.reversed(), vmin=0, vmax=3, size=300, marker=mk)
             else:
-                c, mk = crop(norm[key], lat, lon)
-                src = png(c.values, cmap, size=300, marker=mk)
+                # Farbskala je Ausschnitt strecken, sonst gehen die Unterschiede am Spot im ganzen Bodden unter
+                c, mk = crop(flat[key], lat, lon)
+                v = c.values
+                if np.isfinite(v).sum() > 50:
+                    lo, hi = np.nanpercentile(v, [2, 98]); v = np.clip((v - lo) / (hi - lo + 1e-9), 0, 1)
+                src = png(v, cmap, size=300, marker=mk)
             cells.append(f'<figure><img src="{src}" alt="{name} {label}"><figcaption>{label}</figcaption></figure>')
         rows.append(f'<section><h2>{name}</h2><div class="row">{"".join(cells)}</div></section>')
     over = "".join(f'<figure><img src="{png(norm[k].values, cmap, size=900)}" alt="{VARIANTS[k]}">'
@@ -393,7 +397,7 @@ table{{border-collapse:collapse}} td,th{{padding:4px 10px;border-bottom:1px soli
 </style></head><body><main>
 <h1>Flachwasser im Bodden – welche Variante passt?</h1>
 <p class="note">Sentinel-2, Median der {len(picked)} Tage mit dem klarsten Wasser (in Klammern: Höchstwind davor): {days}. Ausschnitte ±{HALF_KM:g} km um den Spot (roter Kreis), Norden oben.
-Farben sind relativ (2.–98. Perzentil im ganzen Bodden), keine Meter – außer in den Meter-Spalten mit Tiefenpunkten.</p>
+Farben sind relativ und je Ausschnitt gestreckt (2.–98. Perzentil, unten bei der ganzen Kette über den ganzen Bodden), keine Meter – außer in den Meter-Spalten mit Tiefenpunkten.</p>
 <div class="legend"><span>tief</span><span class="bar"></span><span>sehr flach</span><span style="margin-left:16px">grau = Land/Schilf</span></div>
 {caltab}{"".join(rows)}
 <h2>Ganze Boddenkette</h2><div class="row over">{over}</div>
