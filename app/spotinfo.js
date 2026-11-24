@@ -22,8 +22,8 @@ const SPOT_INFO = {
           ["Kite and Windsurfing Guide", "https://web.kite-and-windsurfing-guide.com/spots/kiteboarding-windsurfing-sup/saal-nordvorpommern-germany.html"]]
   },
   pruchten: {
-    text: "Ruhiger Spot an der Südküste des Barther Boddens. Zufahrt über den Weg am Campingplatz vorbei bis ans Wasser. Am Rand des Nationalparks, Schilfufer meiden. Der Kiteverein Pruchten gibt Kurse im Stehbereich.",
-    src: [["Kite and Windsurfing Guide", "https://web.kite-and-windsurfing-guide.com/spots/kiteboarding-windsurfing-sup/pruchten-barther-bodden-nordvorpommern-germany.html"],
+    text: "Ruhiger Spot an der Südküste des Barther Boddens, am Rand des Nationalparks, Schilfufer meiden. Wichtig: Bis zum Spot runterfahren ist verboten. Parken nur nach Absprache auf dem Campingplatz oder bei der Kiteschule, dort kostenpflichtig; das Material dann selbst zum Wasser tragen. Der Kiteverein Pruchten gibt Kurse im Stehbereich.",
+    src: [["Hinweis zum Parken: Ortskenntnis, November 2026", ""],
           ["Kiteverein Pruchten (TMV)", "https://www.visit-mv.com/destinations/a-baltic-sea"]]
   },
   dabitz: {

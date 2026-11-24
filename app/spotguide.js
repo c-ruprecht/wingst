@@ -152,7 +152,7 @@ function select(id, scroll) {
     <p class="hint">„Sauber“ heißt: Auf den Radarbildern war der Wind im Umkreis von 1,5 km sehr gleichmäßig. Welle aus der freien Wasserstrecke gerechnet, nicht gemessen.</p>
     ${c ? `<h3>Wie oft weht es? (Tage mit 14+ kn, ${site === "barth" ? "Bodden, aus Messung Barth" : "Messung Darßer Ort"})</h3>${bars(c[14], "#8fd48a")}` : ""}
     <h3>Vor Ort</h3><div id="osm"><p class="hint">Lade Daten aus OpenStreetMap …</p></div>
-    <p class="hint">Quellen: ${info.src.map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join(" · ")}</p>`;
+    <p class="hint">Quellen: ${info.src.map(([n, u]) => u ? `<a href="${u}" target="_blank" rel="noopener">${n}</a>` : n).join(" · ")}</p>`;
   $("#toFc").addEventListener("click", () => save("spot", id));
   $("#pick").hidden = true;
   if (scroll) $("#spot").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
