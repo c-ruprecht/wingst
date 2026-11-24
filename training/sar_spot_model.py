@@ -8,7 +8,7 @@ Hinweis: Überflüge um ~05 und ~17 UTC – Mittagsthermik ist nicht erfasst. Un
 import sys, glob, numpy as np, pandas as pd
 SAR, PREV = sys.argv[1], sys.argv[2]
 BBOX = (12.30, 54.28, 12.90, 54.52)
-SP = {"born": (54.381079, 12.504912), "saal": (54.312080, 12.480294), "fuhlendorf": (54.385, 12.580),
+SP = {"born": (54.381079, 12.504912), "saal": (54.312080, 12.480294),
       "pruchten": (54.386068, 12.659851), "prerow": (54.455506, 12.555672), "zingst": (54.442567, 12.707110),
       "dabitz": (54.362277, 12.805830)}
 MODEL_AT = {"dabitz": "barth"}   # für Dabitz gibt es keine früheren Modellläufe -> Barth (6 km entfernt)

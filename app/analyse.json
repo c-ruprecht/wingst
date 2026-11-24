@@ -1931,22 +1931,6 @@
 "m3_N": null
 },
 {
-"spot": "fuhlendorf",
-"n": 237,
-"sar_vs_mean3": 1.17,
-"sar_vs_icon": 1.26,
-"sar_vs_gfs": 1.01,
-"sar_vs_barth": 1.23,
-"m3_NO": 1.32,
-"m3_NW": 0.94,
-"m3_O": 1.37,
-"m3_S": 0.91,
-"m3_SO": 1.18,
-"m3_SW": 1.17,
-"m3_W": 1.2,
-"m3_N": null
-},
-{
 "spot": "prerow",
 "n": 242,
 "sar_vs_mean3": 1.16,

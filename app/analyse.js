@@ -9,7 +9,7 @@ const M = {
 };
 const SECT = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
 const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-const SPOT_NAME = { zingst: "Zingst", prerow: "Prerow", born: "Born", fuhlendorf: "Fuhlendorf", saal: "Saal", pruchten: "Pruchten", dabitz: "Dabitz" };
+const SPOT_NAME = { zingst: "Zingst", prerow: "Prerow", born: "Born", saal: "Saal", pruchten: "Pruchten", dabitz: "Dabitz" };
 const f2 = v => v == null ? "–" : v.toFixed(2).replace(".", ",");
 const pc = v => v == null ? "–" : Math.round(v * 100) + " %";
 const qcls = v => v >= 0.88 ? "q3" : v >= 0.8 ? "q2" : v >= 0.72 ? "q1" : "q0";
@@ -96,7 +96,7 @@ function drawCharts() {
 /* ---------- Wind auf dem Wasser je Spot ---------- */
 function drawSpots() {
   const cols = ["W", "SW", "O", "S"];
-  const order = ["zingst", "prerow", "born", "fuhlendorf", "saal", "pruchten", "dabitz"];
+  const order = ["zingst", "prerow", "born", "saal", "pruchten", "dabitz"];
   const R = order.map(k => D.spotfactors.find(s => s.spot === k)).filter(Boolean);
   const fx = v => v == null ? "–" : `${v > 1 ? "+" : ""}${Math.round((v - 1) * 100)} %`;
   let h = `<table class="atab num"><thead><tr><th>Spot</th><th>gesamt</th>${cols.map(l => `<th>${l}</th>`).join("")}</tr></thead><tbody>`;
@@ -108,7 +108,7 @@ function drawSpots() {
 const UFER = { "auflandig": "auf", "schräg auflandig": "schräg auf", "sideshore": "side", "schräg ablandig": "schräg ab", "ablandig": "ab" };
 function drawDirs() {
   if (!DIRS) return;
-  const order = ["zingst", "prerow", "born", "fuhlendorf", "saal", "pruchten", "dabitz"];
+  const order = ["zingst", "prerow", "born", "saal", "pruchten", "dabitz"];
   let h = `<table class="atab dirtab"><thead><tr><th>Spot</th>${SECT.map(s => `<th>${s}</th>`).join("")}</tr></thead><tbody>`;
   for (const sp of order) {
     h += `<tr><th>${SPOT_NAME[sp]}</th>`;

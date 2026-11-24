@@ -4,7 +4,6 @@ const SPOTS = [
   { id: "zingst",     name: "Zingst Ostsee", short: "Zingst", lat: 54.442567, lon: 12.707110, water: "Ostsee",            win: [250, 100], ref: "darss" },
   { id: "born",       name: "Born", short: "Born",          lat: 54.381079, lon: 12.504912, water: "Saaler Bodden",     win: [135, 270], ref: "barth" },
   { id: "saal",       name: "Saal", short: "Saal",          lat: 54.312080, lon: 12.480294, water: "Saaler Bodden",     win: [225, 315], ref: "barth" },
-  { id: "fuhlendorf", name: "Fuhlendorf", short: "Fuhlend.",    lat: 54.385, lon: 12.580, water: "Bodstedter Bodden", win: [270, 90],  ref: "barth" },
   { id: "pruchten",   name: "Pruchten", short: "Pruchten",      lat: 54.386068, lon: 12.659851, water: "Barther Bodden",    win: [270, 100], ref: "barth" },
   { id: "dabitz",     name: "Dabitz", short: "Dabitz",          lat: 54.362277, lon: 12.805830, water: "Grabow",            win: [330, 150], ref: "barth" }
 ];

@@ -15,8 +15,7 @@ SAR = sys.argv[1]
 BBOX = (12.30, 54.28, 12.90, 54.52)
 SPOTS = {  # id: (lat, lon, Ostsee?)
     "prerow": (54.455506, 12.555672, True), "zingst": (54.442567, 12.707110, True),
-    "born": (54.381079, 12.504912, False), "saal": (54.312080, 12.480294, False),
-    "fuhlendorf": (54.385, 12.580, False), "pruchten": (54.386068, 12.659851, False),
+    "born": (54.381079, 12.504912, False), "saal": (54.312080, 12.480294, False), "pruchten": (54.386068, 12.659851, False),
     "dabitz": (54.362277, 12.805830, False)}
 OPEN_SEA_KM = 60      # Ostsee nach Norden/Westen offen; 60 km reichen für die Wellenformel (danach kaum Zuwachs)
 SEC = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"]

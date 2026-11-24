@@ -21,10 +21,6 @@ const SPOT_INFO = {
           ["Surfspot Saal (TMV)", "https://www.off-to-mv.com/destinations/a-surfspot-hall"],
           ["Kite and Windsurfing Guide", "https://web.kite-and-windsurfing-guide.com/spots/kiteboarding-windsurfing-sup/saal-nordvorpommern-germany.html"]]
   },
-  fuhlendorf: {
-    text: "Einstieg über die Straße südwestlich des Ortes. Am Rand des Nationalparks, Schilfufer meiden. Die genaue Einstiegsstelle ist hier noch nicht geprüft.",
-    src: [["Kite and Windsurfing Guide (Pruchten/Fuhlendorf)", "https://web.kite-and-windsurfing-guide.com/spots/kiteboarding-windsurfing-sup/pruchten-barther-bodden-nordvorpommern-germany.html"]]
-  },
   pruchten: {
     text: "Ruhiger Spot an der Südküste des Barther Boddens. Zufahrt über den Weg am Campingplatz vorbei bis ans Wasser. Am Rand des Nationalparks, Schilfufer meiden. Der Kiteverein Pruchten gibt Kurse im Stehbereich.",
     src: [["Kite and Windsurfing Guide", "https://web.kite-and-windsurfing-guide.com/spots/kiteboarding-windsurfing-sup/pruchten-barther-bodden-nordvorpommern-germany.html"],
