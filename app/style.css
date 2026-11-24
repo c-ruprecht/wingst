@@ -177,3 +177,41 @@ code { font-size: 12px; }
 .ensline { margin: 0; font-size: 12px; color: var(--muted); }
 .ensline b { color: var(--ink); }
 .ftable .erow td { outline-style: dashed; }
+
+/* Menü */
+.nav { display: flex; gap: 4px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+.nav a { padding: 5px 12px; border-radius: 6px; color: var(--ink); text-decoration: none; font-size: 14px; }
+.nav a[aria-current="page"] { background: var(--accent); color: #fff; }
+/* Windanalyse */
+.an .panel { display: grid; gap: 10px; }
+.an .lead { margin: 0; }
+.an .hint { margin: 0; }
+.atab { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+.atab th, .atab td { padding: 6px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.atab thead th { font-size: 12px; color: var(--muted); font-weight: 600; }
+.atab tbody th { font-weight: 600; white-space: nowrap; }
+.atab.num td { text-align: right; }
+.atab tr.fa td, .atab tr.fa th { color: var(--muted); font-weight: 400; }
+.atab small { color: var(--muted); }
+.atab .auc { font-variant-numeric: tabular-nums; }
+.q3 { background: #d6efdb; } .q2 { background: #eaf5d8; } .q1 { background: #fbf1d3; } .q0 { background: #f7dcd6; }
+@media (prefers-color-scheme: dark) { .q3 { background: #1f4a2c; } .q2 { background: #2d4420; } .q1 { background: #4a3d1a; } .q0 { background: #4a2320; } }
+.bp { color: #1f7a43; font-weight: 600; } .bn { color: #b3261e; font-weight: 600; }
+.tips { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.charts figure, .an figure { margin: 0; }
+figcaption { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+svg.chart { width: 100%; height: auto; display: block; }
+svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+svg.chart .ax { fill: var(--muted); font-size: 10px; font-family: var(--font-body); }
+.legend .ln { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+.clim { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+.prose p { margin: 0 0 8px; }
+
+main.an { grid-template-columns: minmax(0, 1fr); }
+.tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tscroll .atab { min-width: 100%; }
+.an .panel > * { min-width: 0; }
+.atab.num thead th { text-align: right; }
+.atab.num thead th:first-child { text-align: left; }
+.chartlegend { margin-top: 4px; }

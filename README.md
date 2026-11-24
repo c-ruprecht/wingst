@@ -80,3 +80,7 @@ Copernicus Marine Service (Sentinel-1 L3 Wind) · IOW/BSH MARNET
 - **Seewind** (`training/seabreeze.py`): An Sonnentagen mit schwachem Grundwind dreht Darßer Ort mittags von SO auf ONO und legt von 5 auf 8–9 kn zu; ICON bildet das gut ab. In Barth unterschätzt ICON die Thermik am späten Nachmittag um 1–1,5 kn.
 - **Nowcast in der App:** Zeile „Jetzt-korr.“ = ICON + aktueller Messfehler an Darßer Ort/Barth, klingt mit τ = 20 h bzw. 3 h ab (aus der Autokorrelation des ICON-Fehlers 2023–2025: MAE Darßer Ort 2,9 → 1,8 kn nach 3 h).
 - **Noch herunterladen:** `--only blh` (GFS-Grenzschichthöhe frühere Läufe) und `--only sst_bodden` (Copernicus-Satelliten-Wassertemperatur, zur Prüfung des Bodden-Ersatzes). Das Training nutzt die Grenzschichthöhe automatisch, sobald die Dateien da sind.
+
+## Windanalyse-Seite
+
+`app/analyse.html` (Menüpunkt „Windanalyse“): welches Modell an welchem Vorhersagetag am besten trifft, Treffer/Fehlalarme, Jahreszeiten, Richtungsfehler, Windklima 2016–2025. Zahlen: `python3 training/analysis_page.py results <dwd-ordner> app/analyse.json` (nutzt die kreuzvalidierten Tagesvorhersagen `results/7day_daily_oof_*.csv` aus `train_7day.py`).

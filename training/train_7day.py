@@ -43,7 +43,7 @@ def read_sst(place):
 
 
 BLH = {}
-BODDEN_TAU_DAYS = 5   # Bodden (~2 m tief) folgt der Lufttemperatur mit einigen Tagen Verzögerung
+BODDEN_TAU_DAYS = 5   # Satellit Saaler Bodden 2024–25: tau 10 d passt besser (MAE 1,1 statt 1,3 °C), verschlechterte aber die AUC – daher 5 d
 
 
 def read_bodden_proxy():
@@ -168,6 +168,11 @@ def daily_table(H, thr, p_col):
                 doy_sin=("doy_sin", "first"), doy_cos=("doy_cos", "first"), n=("dwd_ws10", "size"),
                 p_hours=(p_col, lambda s: float((s >= 0.5).sum())), p_mean=(p_col, "mean"))
     agg["icon_run"] = D.apply(lambda g: longest_run(g.sort_index().dwd_ws10 >= thr))
+    # je Modell (für die Auswertung „welches Modell wann“; nicht als Merkmal benutzt)
+    for m in ("icon", "gfs", "ecmwf"):
+        agg[f"{m}_only_run"] = D.apply(lambda g, m=m: longest_run(g.sort_index()[f"{m}_ws10"] >= thr) if g[f"{m}_ws10"].notna().any() else np.nan)
+        agg[f"{m}_only_max"] = D[f"{m}_ws10"].max()
+    agg["mean3_run"] = D.apply(lambda g: longest_run(g.sort_index().models_mean_ws10 >= thr))
     agg["p_run"] = D.apply(lambda g: longest_run(g.sort_index()[p_col] >= 0.5))
     agg["obs_run"] = D.apply(lambda g: longest_run(g.sort_index().obs_kn >= thr))
     agg["y"] = (agg.obs_run >= MIN_RUN).astype(int)
@@ -219,6 +224,7 @@ def main():
                 tr, te = Dd[Dd.year != test_year], Dd[Dd.year == test_year]
                 m = xgb.XGBClassifier(**DAILY_PARAMS).fit(tr[DF], tr.y)
                 Dd.loc[te.index, "p_day"] = m.predict_proba(te[DF])[:, 1]
+            Dd.assign(site=site, thr=thr).to_csv(f"{RES}/7day_daily_oof_{site}_{thr}.csv", index=False)
             for lead in LEADS:
                 s = Dd[Dd.lead_day == lead]
                 pred_local = s.p_day >= 0.5

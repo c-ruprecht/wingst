@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6e8a">
+<title>Windanalyse – Wingst</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Wingst</h1>
+    <span class="sub">Kitewind Darß · Zingst · Bodden</span>
+  </div>
+  <nav class="nav" aria-label="Hauptmenü">
+    <a href="./">Vorhersage</a>
+    <a href="analyse.html" aria-current="page">Windanalyse</a>
+  </nav>
+</header>
+
+<main class="an">
+  <section class="panel">
+    <h2>Wem man wann trauen sollte</h2>
+    <p class="lead">Ausgewertet sind alle Tage 2024 und 2025: Was hatten die Modelle 1 bis 7 Tage vorher für den Tag vorhergesagt, und was wurde dann gemessen? Ein Tag gilt als <b>kitebar</b>, wenn zwischen 7 und 19 Uhr mindestens 2 Stunden am Stück der Stundenmittelwert die Schwelle erreicht. Gemessen wird an Darßer Ort (für Zingst und Prerow) und in Barth (für den Bodden).</p>
+    <div class="trust" id="trust"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Wie gut trifft welches Modell?</h2>
+      <div class="thr-toggle" role="group" aria-label="Schwelle" id="thrSel">
+        <button type="button" class="seg on" data-thr="12" aria-pressed="true">12+ kn</button>
+        <button type="button" class="seg" data-thr="15" aria-pressed="false">15+ kn</button>
+        <button type="button" class="seg" data-thr="20" aria-pressed="false">20+ kn</button>
+      </div>
+    </div>
+    <p class="hint">Trefferwert (AUC): Wie sicher das Modell einen kitebaren von einem windarmen Tag unterscheidet. 1,0 heißt perfekt, 0,5 heißt Münzwurf. Ab etwa 0,8 kann man sich gut danach richten.</p>
+    <div id="charts"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Treffer und Fehlalarme</h2>
+    <p class="hint">Von 10 tatsächlich kitebaren Tagen: wie viele wurden angekündigt? Und von 10 angekündigten: wie viele waren Fehlalarm? ICON zählt als „kitebar“, wenn es selbst 2 h über der Schwelle zeigt; das lokale Modell ab 50 %.</p>
+    <div id="hits"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Nach Jahreszeit</h2>
+    <p class="hint">Bestes Modell je Jahreszeit und Vorlauf, Schwelle 12 kn. Zahl: Trefferwert (AUC).</p>
+    <div id="season"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Wo ICON und ECMWF danebenliegen</h2>
+    <p class="hint">Mittlere Abweichung Messung − Modell in Knoten, je Windrichtung (Stunden mit mindestens 6 kn, 2023–2025). Plus heißt: Das Modell zeigt zu wenig Wind.</p>
+    <div id="bias"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Das Windklima am Darß</h2>
+    <p class="hint">Gemessen 2016–2025, Tageslicht 7–19 Uhr. Anteil der Tage je Monat mit mindestens 2 Stunden am Stück über der Schwelle.</p>
+    <div id="climate"></div>
+    <h3>Aus welcher Richtung kommt der Wind, wenn er weht?</h3>
+    <p class="hint">Anteil der Stunden mit mindestens 12 kn je Richtung.</p>
+    <div id="dirs"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Was das lokale Modell kann – und was nicht</h2>
+    <div class="prose" id="local"></div>
+  </section>
+
+  <section class="notes">
+    <p>Grundlage: frühere Modellläufe über die Open-Meteo Previous Runs API (Jan 2024 – Dez 2025), DWD-Stundenwerte Darßer Ort und Barth. Das lokale Modell wurde jeweils auf einem Jahr trainiert und am anderen geprüft. Die Ensembles und KI-Modelle (AIFS, WeatherNext 2) lassen sich noch nicht auswerten, weil es keine alten Läufe gibt; das Archiv dafür läuft seit November 2026.</p>
+  </section>
+</main>
+<script src="analyse.js"></script>
+</body>
+</html>
