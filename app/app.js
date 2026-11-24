@@ -392,34 +392,34 @@ function drawMarkers() {
 }
 
 /* ---------- Wochenübersicht ---------- */
-/* Bis einschließlich Tag 4 ist das lokale Modell besser und gut geeicht; danach zählt nur noch das Ensemble (Windanalyse). */
-const LOCAL_DAYS = 5;   // Heute + 4 Tage
-const useLocal = (i) => i < LOCAL_DAYS && !!state.local;
+/* Ab welchem Tag das geeichte Ensemble besser ist als das lokale Modell (training/validate_ens.py, DWD 2024–26, AUC):
+   Ostsee: lokal bis einschließlich Tag 4 besser. Bodden: lokal nur heute/morgen gleichauf, ab Tag 3 Ensemble klar besser. */
+const LOCAL_DAYS = { darss_ort: 5, barth: 3 };   // Ostsee heute + 4 Tage, Bodden heute + 2 Tage
+const useLocal = (i, sp) => i < (LOCAL_DAYS[sp ? siteOf(sp) : "darss_ort"] ?? 5) && !!state.local;
 const ensClass = p => p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0";
 
 function drawWeek() {
   const t = $("#week");
   if (!state.fc) { t.innerHTML = ""; return; }
   const ref = days(SPOTS[0].id);
-  const nLoc = ref.filter((d, i) => useLocal(i)).length, nEns = ref.length - nLoc;
   const head = (d, i) => {
     const x = new Date(d.date + "T12:00:00");
     const wd = i === 0 ? "Heute" : x.toLocaleDateString("de-DE", { weekday: "short" });
-    return `<th scope="col" class="${isWeekend(d.date) ? "we" : ""}${i === nLoc && nLoc ? " split" : ""}">${wd}<br><small>${x.getDate()}.${x.getMonth() + 1}.</small></th>`;
+    return `<th scope="col" class="${isWeekend(d.date) ? "we" : ""}">${wd}<br><small>${x.getDate()}.${x.getMonth() + 1}.</small></th>`;
   };
-  const band = `<tr class="band"><th class="spotcol"></th>${nLoc ? `<th colspan="${nLoc}"><span>Lokales Modell</span></th>` : ""}${nEns ? `<th colspan="${nEns}" class="split"><span>Ensemble</span></th>` : ""}</tr>`;
-  let html = `<thead>${band}<tr><th scope="col" class="spotcol">Spot</th>${ref.map(head).join("")}</tr></thead><tbody>`;
+  let html = `<thead><tr><th scope="col" class="spotcol">Spot</th>${ref.map(head).join("")}</tr></thead><tbody>`;
   for (const sp of SPOTS) {
     const ds = days(sp.id);
+    const nLoc = ds.filter((d, i) => useLocal(i, sp)).length;
     html += `<tr class="${sp.id === state.spot ? "cur" : ""}"><th scope="row"><button type="button" class="linkbtn" data-spot="${sp.id}">${sp.short}</button></th>`;
     ds.forEach((d, i) => {
       const we = isWeekend(d.date) ? " we" : "", split = i === nLoc && nLoc ? " split" : "";
-      if (useLocal(i)) {
+      if (useLocal(i, sp)) {
         const r = mainRun(d, state.thr), p = d.pday[state.thr];
         html += `<td class="cell ${runClass(r.len)}${we}${split}" data-spot="${sp.id}" title="${spanText(r)}"><span class="v">${r.len || "–"}</span>${p != null ? `<span class="pd">${Math.round(p * 100)}%</span>` : ""}</td>`;
       } else {
         const ep = d.ens?.[state.thr]?.p;
-        html += `<td class="cell ens ${ensClass(ep)}${we}${split}" data-spot="${sp.id}" title="Anteil der Ensemble-Läufe mit mind. ${MIN_RUN} h ab ${state.thr} kn"><span class="v">${ep == null ? "–" : Math.round(ep * 100) + "%"}</span></td>`;
+        html += `<td class="cell ens ${ensClass(ep)}${we}${split}" data-spot="${sp.id}" title="Chance auf mind. ${MIN_RUN} h ab ${state.thr} kn (Ensemble, an Messungen geeicht)"><span class="v">${ep == null ? "–" : Math.round(ep * 100) + "%"}</span></td>`;
       }
     });
     html += "</tr>";
@@ -427,7 +427,7 @@ function drawWeek() {
   t.innerHTML = html + "</tbody>";
   t.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot)));
   $("#weekHint").innerHTML = state.local
-    ? `Lokales Modell: Stunden am Stück ab ${state.thr} kn aus passender Richtung, darunter die Chance, dass der Tag kitebar ist (mind. ${MIN_RUN} h). Ensemble: Anteil von rund 240 Modellläufen, die das zeigen. Ab Tag 5 ist das lokale Modell nicht mehr besser, deshalb der Wechsel.`
+    ? `Lokales Modell: Stunden am Stück ab ${state.thr} kn aus passender Richtung, darunter die Chance, dass der Tag kitebar ist (mind. ${MIN_RUN} h). Prozent ohne Stundenzahl: Ensemble aus rund 240 Modellläufen, an den Messungen 2024–26 geeicht. Gewechselt wird, sobald das Ensemble besser trifft: an der Ostsee ab Tag 5, am Bodden ab Tag 3.`
     : `Stunden am Stück ab ${state.thr} kn (${MODEL_LABEL[state.modelSel]}, unkorrigiert – Korrekturmodell lädt noch).`;
 }
 
@@ -458,9 +458,9 @@ function drawDetail() {
     const cells = (fn) => { const f = firstRow; firstRow = false; return sunL(f) + d.hours.map(fn).join("") + sunR(f); };
     const offCls = h => h.dirMean != null && !inWindow(h.dirMean, sp.win) ? " off" : "";
     const ed = d.ens?.[t1];
-    const ensTip = ed && ed.p != null ? WingstEns.MODELS.filter(m => ed.byModel[m.key] != null).map(m => `${m.label.replace(/ \(KI\)/, "")} ${pct(ed.byModel[m.key])}`).join(", ") : "";
+    const ensTip = ed && ed.p != null ? WingstEns.MODELS.filter(m => ed.byModel[m.key] != null).map(m => `${m.label.replace(/ \(KI\)/, "")} ${pct(ed.byModel[m.key])}`).join(", ") + (ed.calibrated ? ` (roh, ungeeicht; Mittel roh ${pct(ed.pRaw)})` : "") : "";
     const run = t => { const r = d.local[t]; return r && r.len ? `${t}+: <b>${r.len} h</b> ${spanText(r)}` : `${t}+: –`; };
-    const loc = useLocal(i);
+    const loc = useLocal(i, sp);
     const pRow = t => loc ? `<tr class="lrow"><th scope="row">Lokal ${t}+</th>${cells(h => {
       const p = h.p[t]; return `<td class="${pCls(p)}${offCls(h)}" title="Chance auf ${t}+ kn">${p == null ? "·" : Math.round(p * 100)}</td>`; })}</tr>`
       : `<tr class="lrow erow"><th scope="row" title="Anteil der Ensemble-Läufe mit ${t}+ kn aus passender Richtung">Ens ${t}+</th>${cells(h => {
@@ -625,6 +625,7 @@ function init() {
   renderAll();
   fetchJSON("analyse.json").then(j => { CLIMATE = j.climate; drawLong(); }).catch(() => {});
   fetchJSON("model/water_factor.json").then(t => { WingstEns.setWater(t); state.ensCache = {}; renderAll(); }).catch(() => {});
+  fetchJSON("model/ens_calib.json").then(c => { WingstEns.setCalib(c); state.ensCache = {}; renderAll(); }).catch(() => {});
   fetchJSON("model/ens_bias.json").then(b => { state.ensBias = b; state.ensCache = {}; renderAll(); }).catch(e => console.warn("Ensemble-Korrektur", e));
   loadLocalModel()
     .then(m => { state.model = m; recomputeLocal(); renderAll();

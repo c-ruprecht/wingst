@@ -15,6 +15,22 @@ const WingstEns = (() => {
   // gleich wie im lokalen Modell. Bis die Tabelle geladen ist: 1,1 (Tagesmittel).
   let WATER_TABLE = null;
   const setWater = t => { WATER_TABLE = t && t.barth; };
+  // Eichung der Tages-Prozente an DWD-Messungen 2024–26 (training/validate_ens.py -> model/ens_calib.json):
+  // je Station, Schwelle und Vorlauftag eine monotone Kurve roher Anteil -> wirklich kitebar.
+  // Ohne sie wären die Ostsee-Werte deutlich zu hoch (roh 65 % ≈ wirklich 5 % am Darßer Ort).
+  let CALIB = null;
+  const setCalib = c => { CALIB = c || null; };
+  function calibrate(site, thr, lead, p) {
+    if (p == null || !CALIB || !CALIB[site] || !CALIB[site][thr]) return p;
+    const tab = CALIB[site][thr], keys = Object.keys(tab).map(Number);
+    const c = tab[String(Math.min(Math.max(1, lead), Math.max(...keys)))];
+    if (!c) return p;
+    const { x, y } = c;
+    if (p <= x[0]) return y[0];
+    for (let i = 1; i < x.length; i++) if (p <= x[i]) return y[i - 1] + (y[i] - y[i - 1]) * (p - x[i - 1]) / (x[i] - x[i - 1]);
+    return y[y.length - 1];
+  }
+  const dayDiff = (a, b) => Math.round((Date.parse(a + "T12:00:00Z") - Date.parse(b + "T12:00:00Z")) / 864e5);
   const season = m => (m >= 3 && m <= 5) ? 1 : (m >= 6 && m <= 8) ? 2 : (m >= 9 && m <= 11) ? 3 : 0;
   function waterAt(site, t) {
     if (site !== "barth") return 1;
@@ -108,7 +124,9 @@ const WingstEns = (() => {
           if (n) byModel[m.key] = hit / n;
         }
         const ks = Object.keys(byModel);
-        daily[date][thr] = { p: ks.length ? ks.reduce((s, k) => s + byModel[k], 0) / ks.length : null, byModel };
+        const raw = ks.length ? ks.reduce((s, k) => s + byModel[k], 0) / ks.length : null;
+        const lead = dayDiff(date, ens.time[0].slice(0, 10));
+        daily[date][thr] = { p: calibrate(ens.site, thr, lead, raw), pRaw: raw, calibrated: !!CALIB, byModel };
       }
       // stündlich: Anteil der Läufe über Schwelle und aus passender Richtung, Modelle gleich gewichtet
       hours.forEach((h, j) => {
@@ -138,6 +156,6 @@ const WingstEns = (() => {
     return { hourly, daily, median: med };
   }
 
-  return { MODELS, SITES, fetchAll, probabilities, parse, setWater };
+  return { MODELS, SITES, fetchAll, probabilities, parse, setWater, setCalib, calibrate };
 })();
 if (typeof module !== "undefined") module.exports = WingstEns;
