@@ -615,7 +615,7 @@ function init() {
   $("#refreshBtn").addEventListener("click", refresh);
   $("#btnMap").addEventListener("click", () => setLayer("map"));
   $("#btnSat").addEventListener("click", () => setLayer("sat"));
-  WingstDepth.bind(() => state.map);
+  WingstDepth.bind(() => state.map, { key: "wingst-depth-home", def: false });   // Startseite: aus, bis man sie einschaltet
   try {
     const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
     if (c && c.fc && c.fc.sites) { state.fc = c.fc; state.obs = c.obs || {}; }

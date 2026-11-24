@@ -164,7 +164,7 @@ function select(id, scroll) {
 function init() {
   $("#btnMap").addEventListener("click", () => setLayer("map"));
   $("#btnSat").addEventListener("click", () => setLayer("sat"));
-  WingstDepth.bind(() => map);
+  WingstDepth.bind(() => map, { key: "wingst-depth-guide", def: true });
   const pick = document.createElement("div");
   pick.className = "spotpick";
   pick.innerHTML = SPOTS.map(s => `<button type="button" class="seg" data-id="${s.id}">${s.short}</button>`).join("");

@@ -1,9 +1,10 @@
 /* Tiefenebene (BSH-Geländemodell, training/depth_layer.py → depth.geojson) – genutzt von Vorhersage und Spotguide.
-   WingstDepth.add(map, beforeId) im map.on("load"), WingstDepth.bind(map) verbindet #btnDepth und #depthLegend. */
+   WingstDepth.bind(getMap, {key, def}) verbindet #btnDepth und #depthLegend (je Seite eigene Einstellung und Vorgabe),
+   WingstDepth.add(map, beforeId) im map.on("load"). */
 const WingstDepth = (() => {
   const LAYERS = ["depth-zone", "depth-line", "depth-line3", "depth-rinne"];
-  const KEY = "wingst-depth";
-  const isOn = () => { try { return (localStorage.getItem(KEY) ?? "1") === "1"; } catch (e) { return true; } };
+  let cfg = { key: "wingst-depth", def: true };
+  const isOn = () => { try { const v = localStorage.getItem(cfg.key); return v == null ? cfg.def : v === "1"; } catch (e) { return cfg.def; } };
   function add(map, before) {
     map.addSource("depth", { type: "geojson", data: "depth.geojson",
       attribution: "Tiefen: BSH, Digitales Geländemodell 50 m" });
@@ -21,13 +22,14 @@ const WingstDepth = (() => {
     set(map, isOn());
   }
   function set(map, on) {
-    try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) {}
+    try { localStorage.setItem(cfg.key, on ? "1" : "0"); } catch (e) {}
     const b = document.getElementById("btnDepth"), lg = document.getElementById("depthLegend");
     if (b) { b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); }
     if (lg) lg.hidden = !on;
     if (map) LAYERS.forEach(id => map.getLayer(id) && map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
   }
-  function bind(getMap) {
+  function bind(getMap, opts) {
+    if (opts) cfg = { ...cfg, ...opts };
     const b = document.getElementById("btnDepth");
     if (b) b.addEventListener("click", () => set(getMap(), !isOn()));
     set(getMap(), isOn());
