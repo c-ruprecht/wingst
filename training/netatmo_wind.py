@@ -167,7 +167,7 @@ def find():
 
 def history(days):
     st = pd.read_csv(os.path.join(DIR, "stations.csv"))
-    end = int(time.time()); start = end - days * 86400
+    end = int(time.time()) // 3600 * 3600; start = end - days * 86400      # volle Stunden, sonst verschobene Stundenfenster
     for _, s in st.iterrows():
         out = os.path.join(DIR, f"{s.station.replace(':', '')}.csv")
         have = pd.read_csv(out, parse_dates=["time"]) if os.path.exists(out) else pd.DataFrame()
