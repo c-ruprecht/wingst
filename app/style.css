@@ -229,3 +229,6 @@ main.an { grid-template-columns: minmax(0, 1fr); }
 .longsum { margin: 0; font-size: 14px; }
 .week.long tr.stn th, .week.long tr.stn td { border-bottom: 2px solid var(--line); }
 .week.long th small { font-weight: 400; color: var(--muted); font-size: 10px; }
+
+.wflinks { margin: 0; font-size: 14px; line-height: 1.7; }
+.wflinks small { color: var(--muted); }

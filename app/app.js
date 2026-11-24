@@ -472,6 +472,12 @@ function drawDetail() {
 }
 
 /* ---------- Messstationen ---------- */
+/* Private Stationen bei Windfinder: keine offene Schnittstelle, daher nur verlinkt */
+const WF_LINKS = [
+  ["Born am Darß", "https://www.windfinder.com/report/born_am_dar_", "am Bodden"],
+  ["Zingst", "https://www.windfinder.com/report/zingst", ""],
+  ["Ahrenshoop Deich", "https://www.windfinder.com/windstatistics/ahrenshoop_deich", "Ostseeküste Fischland"]
+];
 function drawStations() {
   const list = STATIONS.map(st => {
     const o = state.obs[st.id];
@@ -479,6 +485,8 @@ function drawStations() {
       <span>${o ? `${Math.round(o.kn)} kn ${compass(o.dir)}${o.gust ? ` · Böe ${Math.round(o.gust)}` : ""} <small>${fmtTime(o.time)}</small>` : "keine Daten"}</span></li>`;
   }).join("");
   $("#stations").innerHTML = `<div class="panel-head"><h2 id="stH">Messungen jetzt</h2></div><ul class="stnlist">${list}</ul>
+    <h3>Weitere Live-Stationen (Windfinder)</h3>
+    <p class="wflinks">${WF_LINKS.map(([n, u, note]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a> <small>${note}</small>`).join("<br>")}</p>
     <h3>Darßer Schwelle (offene See, letzte 7 Tage, m/s)</h3>
     <div class="sill-img"><img src="${SILL.plot}" alt="Windgeschwindigkeit Darßer Schwelle, letzte 7 Tage" loading="lazy"><img src="${SILL.plotDir}" alt="Windrichtung Darßer Schwelle, letzte 7 Tage" loading="lazy"></div>`;
 }
@@ -520,12 +528,7 @@ function drawLong() {
     const exp = valid.reduce((a, b) => a + b, 0);
     const clim = CLIMATE?.[site]?.[thr] ? hb.reduce((s, [d]) => s + CLIMATE[site][thr][Number(d.slice(5, 7)) - 1], 0) : null;
     if (valid.length) summary.push({ lab, exp, clim, n: valid.length });
-    rows += `<tr class="stn"><th scope="row">${lab}<br><small>alle Richtungen</small></th>${ps.map((p, i) => cell(p, hb[i][0])).join("")}</tr>`;
-  }
-  for (const sp of SPOTS) {
-    if (tooRare(sp, thr)) continue;
-    const P = longProb(siteOf(sp), sp.win, hb); if (!P) continue;
-    rows += `<tr><th scope="row">${sp.short}</th>${hb.map(([d]) => cell(P.daily[d]?.[thr]?.p ?? null, d)).join("")}</tr>`;
+    rows += `<tr><th scope="row">${lab}<br><small>${site === "barth" ? "Messung Barth" : "Messung Darßer Ort"}</small></th>${ps.map((p, i) => cell(p, hb[i][0])).join("")}</tr>`;
   }
   const verdict = s => {
     if (s.clim == null) return `${s.lab}: erwartet ${s.exp.toFixed(1).replace(".", ",")} kitebare Tage`;
@@ -535,8 +538,8 @@ function drawLong() {
   };
   box.innerHTML = `<div class="panel-head"><h2 id="longH">Woche 2: Tendenz</h2><span class="meta">${thr}+ kn · nur Ensembles</span></div>
     ${summary.length ? `<p class="longsum">${summary.map(verdict).join("<br>")}</p>` : ""}
-    <div class="weekwrap"><table class="week long"><thead><tr><th scope="col" class="spotcol">Spot</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="hint">Zahl: Anteil der Ensemble-Läufe (ECMWF IFS, AIFS, WeatherNext 2, ab Tag 10 ohne GEFS) mit mindestens ${MIN_RUN} h am Stück ab ${thr} kn, richtungskorrigiert. Einzelne Tage sind so weit voraus nicht vorhersagbar – lies die Zeile als Wetterlage: viele grüne Felder = windige Westwindphase. „Üblich“: gemessen 2016–2025 an der Station im selben Monat. Noch nicht an alten Vorhersagen geprüft.</p>`;
+    <div class="weekwrap"><table class="week long"><thead><tr><th scope="col" class="spotcol">Gebiet</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="hint">Zahl: Anteil der Ensemble-Läufe (ECMWF IFS, AIFS, WeatherNext 2, ab Tag 10 ohne GEFS) mit mindestens ${MIN_RUN} h am Stück ab ${thr} kn, richtungskorrigiert. Alle Windrichtungen – ob die Richtung zu einem Spot passt, lässt sich so weit voraus nicht sagen. Einzelne Tage sind nicht vorhersagbar; lies die Zeile als Wetterlage: viele grüne Felder = windige Phase. „Üblich“: gemessen 2016–2025 an der Station im selben Monat. Noch nicht an alten Vorhersagen geprüft.</p>`;
 }
 
 function renderAll() { drawWeek(); drawLong(); drawDetail(); drawStations(); drawMarkers(); }
