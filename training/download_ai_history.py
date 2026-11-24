@@ -21,7 +21,8 @@ hängt die Datenmenge von der Kachelung ab – --inspect zeigt sie, bevor etwas 
 import argparse, os, sys, time
 import numpy as np, pandas as pd
 
-OUT = "data/ai_history"
+# immer der Ordner data/ im Repo, egal aus welchem Ordner das Skript gestartet wird
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "ai_history")
 SITES = {"darss_ort": (54.4738, 12.5014), "barth": (54.3405, 12.7109)}
 START = "2022-01-01"
 

@@ -28,7 +28,8 @@ TODAY = dt.date.today()
 THIS_YEAR = TODAY.year
 LAST_DAY = TODAY - dt.timedelta(days=1)   # laufendes Jahr: Daten bis gestern
 YEARS = range(2021, THIS_YEAR + 1)
-OUT = "data"
+# immer der Ordner data/ im Repo, egal aus welchem Ordner das Skript gestartet wird
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 
 
 def need(path, year=None):
