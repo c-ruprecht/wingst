@@ -411,6 +411,47 @@ def emodnet(like):
     return None
 
 
+BSH_URL = "https://gdi.bsh.de/de/data/Elevation-Bathymetry.zip"   # BSH-Geländemodell Nord-/Ostsee, 50 m, NHN
+
+
+def bsh_depth(like, path):
+    """BSH-Tiefenmodell (50 m) aus der ZIP (oder einer Rasterdatei) auf das Raster legen; Tiefe in m (positiv).
+    Liest jedes Rasterformat, das GDAL kennt (GeoTIFF, ASCII-Grid, NetCDF …), auch mehrere Kacheln."""
+    import zipfile
+    import rasterio
+    from rasterio.warp import reproject, Resampling
+    if not os.path.exists(path):
+        print(f"BSH-Modell nicht gefunden ({path}). Herunterladen:\n  curl -L -o {path} {BSH_URL}")
+        return None
+    if zipfile.is_zipfile(path):
+        names = zipfile.ZipFile(path).namelist()
+        rasters = [f"/vsizip/{path}/{n}" for n in names
+                   if n.lower().endswith((".tif", ".tiff", ".asc", ".nc", ".grd", ".bag", ".vrt", ".img"))]
+        if not rasters:
+            print("BSH-ZIP enthält keine bekannte Rasterdatei. Inhalt:\n  " + "\n  ".join(names[:40]))
+            return None
+    else:
+        rasters = [path]
+    dst = np.full(like.shape, np.nan, dtype="float32")
+    for r in rasters:
+        with rasterio.open(r) as src:
+            crs = src.crs or "EPSG:25832"          # BSH: ETRS89/UTM32, falls nicht angegeben
+            tmp = np.full(like.shape, np.nan, dtype="float32")
+            try:
+                reproject(rasterio.band(src, 1), tmp, src_crs=crs, src_nodata=src.nodata,
+                          dst_transform=like.odc.geobox.affine, dst_crs=CRS, dst_nodata=np.nan,
+                          resampling=Resampling.bilinear)
+            except Exception as e:
+                print(f"  {r}: übersprungen ({e})"); continue
+            dst = np.where(np.isnan(dst), tmp, dst)
+    if np.isnan(dst).all():
+        print("BSH-Modell deckt die Boddenkette nicht ab.")
+        return None
+    depth = xr.DataArray(-dst, dims=("y", "x"), coords={"y": like.y, "x": like.x}).odc.assign_crs(CRS)
+    print(f"BSH geladen ({len(rasters)} Datei(en)): Tiefe im Bodden Median {float(depth.where(depth > 0).median()):.1f} m")
+    return depth
+
+
 # ---------------------------------------------------------------- Bilder und Seite
 
 def png(arr, cmap, vmin=0, vmax=1, size=None, marker=None):
@@ -452,12 +493,14 @@ def depth_cmap():
     return LinearSegmentedColormap.from_list("flach", ["#0b2a4a", "#1f5f8b", "#4fa3c7", "#a8dbd9", "#f3e3b0", "#f7c873"])
 
 
-def page(ds, flat, wm, cal, picked, out, emod=None, labtab=None):
+def page(ds, flat, wm, cal, picked, out, emod=None, labtab=None, bsh=None):
     cmap = depth_cmap()
     tc = truecolor(ds)
     tcx = xr.DataArray(np.moveaxis(tc, -1, 0), dims=("band", "y", "x"), coords={"y": ds.y.values, "x": ds.x.values})
     norm = {k: normalize(v, wm) for k, v in flat.items()}
     cols = [("tc", "Satellitenbild (Median)")] + [(k, VARIANTS[k]) for k in flat]
+    if bsh is not None:
+        cols.append(("bsh", "BSH (m, 50 m Raster)"))
     if emod is not None:
         cols.append(("emod", "EMODnet (m, ~115 m Raster)"))
     if cal:
@@ -469,8 +512,8 @@ def page(ds, flat, wm, cal, picked, out, emod=None, labtab=None):
             if key == "tc":
                 c, mk = crop(tcx, lat, lon)
                 src = png(np.moveaxis(c.values, 0, -1), None, size=300, marker=mk)
-            elif key == "emod":
-                c, mk = crop(emod.where(wm), lat, lon)
+            elif key in ("emod", "bsh"):
+                c, mk = crop((emod if key == "emod" else bsh).where(wm), lat, lon)
                 src = png(c.values, cmap.reversed(), vmin=0, vmax=4, size=300, marker=mk)
             elif key.startswith("m"):
                 k = key[1:]
@@ -558,6 +601,8 @@ def main():
     ap.add_argument("--res", type=int, default=10, help="Auflösung in m (20 halbiert Zeit und Speicher grob auf 1/4)")
     ap.add_argument("--threads", type=int, default=2, help="parallele Lese-Threads (wenig RAM: 1–2)")
     ap.add_argument("--no-emodnet", action="store_true", help="EMODnet-Tiefenmodell nicht laden")
+    ap.add_argument("--bsh", default=f"{ROOT}/data/depth/Elevation-Bathymetry.zip",
+                    help=f"BSH-Tiefenmodell (ZIP oder Raster), Download: {BSH_URL}; leer = nicht verwenden")
     ap.add_argument("--skip-download", action="store_true",
                     help="nur neu rechnen/zeichnen aus data/depth/szenen/ (z. B. nach neuen Tiefenpunkten)")
     a = ap.parse_args()
@@ -586,13 +631,17 @@ def main():
     if emod is not None:
         layers["EMODnet"] = -emod.where(wm)          # flacher = größer, wie die Varianten
         emod.where(wm).astype("float32").odc.write_cog(f"{a.out}/emodnet_tiefe.tif", overwrite=True)
+    bsh = bsh_depth(flat["A"], a.bsh) if a.bsh else None
+    if bsh is not None:
+        layers["BSH"] = -bsh.where(wm)
+        bsh.where(wm).astype("float32").odc.write_cog(f"{a.out}/bsh_tiefe.tif", overwrite=True)
     labtab = check_labels(layers, wm)
     if labtab is not None:
         labtab.to_csv(f"{a.out}/flaechen_check.csv", index=False)
     cal = calibrate(flat, f"{a.out}/tiefenpunkte.csv")
     template(a.out)
     write_tifs(flat, wm, cal, a.out)
-    page(rgb, flat, wm, cal, picked, a.out, emod, labtab)
+    page(rgb, flat, wm, cal, picked, a.out, emod, labtab, bsh)
 
 
 if __name__ == "__main__":
