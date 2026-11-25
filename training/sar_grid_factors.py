@@ -46,7 +46,11 @@ def get(url, tries=8):
     for i in range(tries):
         try:
             with urllib.request.urlopen(url, timeout=180, context=CTX) as r:
-                return json.loads(r.read())
+                body = r.read()
+            try:
+                return json.loads(body)
+            except ValueError:
+                raise RuntimeError(f"keine Daten in der Antwort ({body[:80]!r})")
         except Exception as e:
             if "CERTIFICATE_VERIFY_FAILED" in str(e):
                 sys.exit("SSL-Zertifikate fehlen: im conda-Env mit python starten oder pip install certifi")
@@ -62,8 +66,13 @@ def icon_grid(times, pts):
     frames = []
     for mo in months:
         f = os.path.join(CACHE, f"{mo}.csv.gz")
-        if not os.path.exists(f):
-            start = pd.Timestamp(mo + "-01"); end = (start + pd.offsets.MonthEnd(0))
+        start = pd.Timestamp(mo + "-01"); end = start + pd.offsets.MonthEnd(0)
+        yesterday = pd.Timestamp.today().normalize() - pd.Timedelta(days=1)
+        complete = end <= yesterday                         # laufender Monat: nur bis gestern, nicht dauerhaft speichern
+        end = min(end, yesterday)
+        if start > end:
+            continue
+        if not os.path.exists(f) or not complete:
             parts = []
             for b in range(0, len(pts), 40):                    # 40 Punkte je Anfrage
                 chunk = pts[b:b + 40]
@@ -78,9 +87,11 @@ def icon_grid(times, pts):
                                                "ws": h["wind_speed_10m"], "wd": h["wind_direction_10m"]}))
                 time.sleep(1)
             d = pd.concat(parts); d["time"] = pd.to_datetime(d.time, utc=True)
-            d.to_csv(f, index=False)
-            print(f"  ICON {mo}: {len(d)} Werte")
-        d = pd.read_csv(f, parse_dates=["time"])
+            if complete:
+                d.to_csv(f, index=False)
+            print(f"  ICON {mo}: {len(d)} Werte{'' if complete else ' (laufender Monat, bis gestern)'}")
+        else:
+            d = pd.read_csv(f, parse_dates=["time"])
         frames.append(d[d.time.isin(times)])
     return pd.concat(frames).set_index(["time", "lat", "lon"]).sort_index()
 
