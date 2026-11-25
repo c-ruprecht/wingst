@@ -121,10 +121,18 @@ def main():
         imgs.append((t, z["v"] * 1.943844))
     print(f"{len(imgs)} Satellitenbilder, {len(near)} Gitterpunkte mit Wasser im Umkreis von {RADIUS_KM} km")
     icon = icon_grid(sorted({t for t, _ in imgs}), [(LATS[i], LONS[j]) for (i, j) in sorted(near)])
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from sar_ice import ice_times
+    smp = os.path.join(ROOT, "results", "sar300_spot_samples.csv")
+    ice = ice_times(pd.read_csv(smp, parse_dates=["time"]).drop_duplicates(["time", "spot"])) if os.path.exists(smp) else set()
+    ice = {pd.Timestamp(t).round("h") for t in ice}
+    print(f"{len(ice)} Überflüge mit Eis auf dem Bodden: dort ausgelassen")
 
     rows = []
     for t, v in imgs:
         for (i, j), idx in near.items():
+            if t in ice and LATS[i] < 54.43:            # Bodden-Punkt (südlich Darß/Zingst) bei Eis überspringen
+                continue
             vals = v[ys[idx], xs[idx]]; vals = vals[np.isfinite(vals)]
             if vals.size < MIN_WATER_PX:
                 continue

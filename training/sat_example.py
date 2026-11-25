@@ -10,9 +10,11 @@ Werte an Spots und Stationen: results/sar300_spot_samples.csv
 Ausgabe: app/img/sat_beispiel_ost.png, app/img/sat_beispiel_west.png, app/sat_beispiele.json
 
 Aufruf (Repo-Ordner): python training/sat_example.py [--ost JJJJ-MM-TTTHH] [--west JJJJ-MM-TTTHH]
-  Ohne Angabe sucht das Skript selbst je einen deutlichen Fall aus.
+  Ohne Angabe sucht das Skript selbst aus: alle sechs Spots im Bild, ≥ 90 % der Wasserfläche abgedeckt, kein Eis;
+  Ost: Ostsee und Bodden etwa gleich stark, West: typisches Verhältnis Bodden/Barth.
 """
-import argparse, glob, json, os
+import argparse, glob, json, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -63,21 +65,36 @@ def field_for(t):
     return None
 
 
-def pick(S, kind):
-    """Typischer, deutlicher Fall: kräftiger Wind, Verhältnis nahe am mittleren Faktor dieser Richtung."""
+def coverage(t, mask):
+    """Anteil der Wasserpixel mit Wind im Bild (None, wenn das Einzelbild lokal nicht vorliegt)."""
+    f = field_for(t)
+    if f is None:
+        return None
+    return float(np.isfinite(f[mask]).mean())
+
+
+def pick(S, kind, mask):
+    """Deutlicher, vollständiger, eisfreier Fall.
+    Ost: Ostsee und Bodden etwa gleich stark (zeigt, dass der Darßer Ort bei Ost zu wenig misst, nicht die Spots).
+    West: Bodden-Verhältnis zu Barth nahe am Mittel dieser Richtung."""
+    from sar_ice import ice_times
     w = S.pivot(index="time", columns="spot", values="sar")
     m = S.drop_duplicates("time").set_index("time")[["darss", "barth", "dir"]]
-    J = w.join(m).dropna(subset=["prerow", "zingst", "born", "saal", "pruchten"])
+    J = w.join(m).dropna(subset=list(SPOTS))                 # alle sechs Spots im Bild
+    J = J[~J.index.isin(ice_times(S)) & J.index.month.isin(range(4, 12))]   # Beispiel nur aus der eisfreien Zeit
+    ost = J[list(OST)].mean(axis=1); bod = J[["born", "saal", "pruchten", "dabitz"]].mean(axis=1)
     if kind == "ost":
-        x = J[(J.dir > 60) & (J.dir < 120) & (J.darss >= 10) & (J.barth >= 6)]
-        score = x[list(OST)].mean(axis=1) / x.darss
+        x = J[(J.dir > 60) & (J.dir < 120) & (J.darss >= 10) & (J.barth >= 6) & (bod >= 12)]
+        score = (ost[x.index] / bod[x.index] - 1).abs()
     else:
         x = J[(J.dir > 235) & (J.dir < 295) & (J.darss >= 16) & (J.barth >= 10)]
-        score = x[["born", "saal", "pruchten"]].mean(axis=1) / x.barth
-    if x.empty:
-        return None
-    target = score.median()
-    return (score - target).abs().idxmin()
+        r = bod[x.index] / x.barth
+        score = (r - r.median()).abs()
+    for t in score.sort_values().index:                      # bestes Bild, das die Fläche fast ganz abdeckt
+        c = coverage(t, mask)
+        if c is None or c >= 0.9:
+            return t
+    return None
 
 
 def compass(d):
@@ -144,7 +161,7 @@ def main():
     out = []
     for kind in ("ost", "west"):
         want = getattr(a, kind)
-        t = pd.Timestamp(want, tz="UTC") if want else pick(S, kind)
+        t = pd.Timestamp(want, tz="UTC") if want else pick(S, kind, mask)
         if t is None:
             print("kein passender Überflug für", kind); continue
         out.append(draw(S, t, kind, mask, src))

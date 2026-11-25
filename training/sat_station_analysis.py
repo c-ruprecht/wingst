@@ -12,9 +12,11 @@ Ergebnis: app/satellit.json
 
 Aufruf (Repo-Ordner): python training/sat_station_analysis.py
 """
-import json, os
+import json, os, sys
 import numpy as np
 import pandas as pd
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sar_ice import drop_ice
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "results", "sar300_spot_samples.csv")
@@ -36,13 +38,14 @@ def stats(r):
 
 def main():
     s = pd.read_csv(SRC, parse_dates=["time"]).drop_duplicates(["time", "spot"])
+    s, n_ice = drop_ice(s)                       # zugefrorener Bodden: Radar liest dort fast Windstille
     s["sec"] = (((s["dir"] + 22.5) % 360) // 45).astype(int).map(dict(enumerate(SEC)))
     loc = s.time.dt.tz_convert("Europe/Berlin")
     s["season"] = loc.dt.month.map(SEASON)
     s["tod"] = np.where(loc.dt.hour < 12, "morgens", "abends")
     out = {"meta": {"bilder": int(s.time.nunique()), "von": f"{s.time.min():%Y-%m}", "bis": f"{s.time.max():%Y-%m}",
                     "uhrzeiten": {str(k): int(v) for k, v in loc.drop_duplicates().dt.hour.value_counts().sort_index().items()},
-                    "min_kn": MIN_KN, "min_n": MIN_N},
+                    "min_kn": MIN_KN, "min_n": MIN_N, "eis_ueberfluege": n_ice},
            "spots": {}, "areas": {}}
     for spot, g in s.groupby("spot"):
         o = {}
@@ -71,7 +74,7 @@ def main():
     out["stationen"] = {"darss_zu_barth": stats(t.darss / t.barth),
                         "richtung": {k: stats((t.darss / t.barth)[t.sec == k]) for k in SEC}}
     json.dump(out, open(OUT, "w"), ensure_ascii=False, separators=(",", ":"))
-    print(f"-> {OUT}")
+    print(f"-> {OUT}  ({n_ice} Überflüge mit Eis auf dem Bodden ausgelassen)")
     for area in AREAS:
         a = out["areas"][area]
         print(f"{area}: zu Darßer Ort {a['darss']['gesamt']}, zu Barth {a['barth']['gesamt']}")

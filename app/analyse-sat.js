@@ -47,6 +47,8 @@ function drawSatIntro() {
         Barth steht an Land am Flugplatz, das Wasser bremst den Wind weniger.</li>
       <li><b>Die beiden Stationen untereinander:</b> Darßer Ort misst bei West und Nordwest ${rng(span(sd, ["SW", "W", "NW"]))}-mal so viel wie Barth, bei Ost ${rng(span(sd, ["NO", "O", "SO"]))}-mal.
         Welche Station für einen Spot „stimmt“, hängt also stark von der Windrichtung ab.</li>
+      ${m.eis_ueberfluege ? `<li><b>Eis:</b> Im Winter 2026 war der Bodden zeitweise zugefroren. Auf Eis liest das Radar fast Windstille.
+        Die ${m.eis_ueberfluege} Überflüge, bei denen der Bodden im Winter unter 75 % von Barth lag, zählen deshalb für den Bodden nicht mit, die Ostsee bleibt drin.</li>` : ""}
       <li><b>Wie eng es zusammenhängt:</b> Die Werte am Spot und an der Station hängen mit r = ${[...OST, ...BOD].map(s => SAT.spots[s]?.[ownRef(s)]?.r).filter(Boolean).reduce((a, b) => Math.min(a, b), 9).toFixed(2).replace(".", ",")}–${[...OST, ...BOD].map(s => SAT.spots[s]?.[ownRef(s)]?.r).filter(Boolean).reduce((a, b) => Math.max(a, b), 0).toFixed(2).replace(".", ",")} zusammen.
         Ein einzelnes Bild ist auf etwa ±2 kn genau, im Mittel über viele Bilder ist das Verhältnis aber belastbar.</li>
     </ul>`);
@@ -182,7 +184,7 @@ function drawSatExamples(list) {
     const ost = sp.filter(([k]) => OST.includes(k)), bod = sp.filter(([k]) => BOD.includes(k));
     const line = (arr, st, meas) => arr.map(([k, v]) => `${v.name} ${n(v.kn)} kn = ${n(meas)} × ${f(v.faktor)}`).join(", ");
     return `<figure class="satex"><img src="${e.bild}" alt="Satellitenbild ${e.zeit}, Wind aus ${e.richtung}: Messung Darßer Ort ${n(e.darss)} kn, Barth ${n(e.barth)} kn, Satellitenwind an den Spots" loading="lazy">
-      <figcaption><b>Wind aus ${e.richtung}, ${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}.${e.zeit.slice(0, 4)} ${e.zeit.slice(11)} Uhr.</b>
+      <figcaption><b>${e.id === "ost" ? "Ostwind: Ostsee und Bodden etwa gleich stark" : "Westwind: typischer Fall"}, ${e.richtung}, ${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}.${e.zeit.slice(0, 4)} ${e.zeit.slice(11)} Uhr.</b>
       Quadrate: Messung an der Station. Kreise: Satellitenwind auf dem Wasser am Spot, dahinter der Faktor zur Station.
       Ostsee zum Darßer Ort (${n(e.darss)} kn): ${line(ost, "darss", e.darss)}. Bodden zu Barth (${n(e.barth)} kn): ${line(bod, "barth", e.barth)}.
       ${e.windfeld ? "Farbe der Wasserfläche: Windfeld dieses Überflugs." : "Ohne Windfeld im Hintergrund, die Einzelbilder liegen nur lokal vor."}</figcaption></figure>`;

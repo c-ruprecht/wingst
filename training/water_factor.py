@@ -25,7 +25,10 @@ def season(m):
     return np.select([np.isin(m, [3, 4, 5]), np.isin(m, [6, 7, 8]), np.isin(m, [9, 10, 11])], [1, 2, 3], 0)
 
 
-s = pd.read_csv(f"{RES}/sar300_spot_samples.csv", parse_dates=["time"])
+s = pd.read_csv(f"{RES}/sar300_spot_samples.csv", parse_dates=["time"]).drop_duplicates(["time", "spot"])
+from sar_ice import drop_ice
+s, n_ice = drop_ice(s)                           # zugefrorener Bodden zählt nicht
+print(f"{n_ice} Überflüge mit Eis auf dem Bodden ausgelassen")
 s = s[s.spot.isin(BODDEN) & (s.darss >= 6)]
 K = (s.sar / s.darss).groupby(season(s.time.dt.tz_convert("Europe/Berlin").dt.month)).median()   # je Saison
 
