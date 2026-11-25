@@ -94,16 +94,18 @@ function drawSatDirs() {
 
 function drawSatUse() {
   put("#satUse", `
-    <p>Die Satellitenbilder fließen an drei Stellen ein, an einer bewusst noch nicht:</p>
+    <p>Die Satellitenbilder fließen an vier Stellen ein:</p>
     <ul class="tips">
       <li><b>Lokales Modell (Tageschancen ab 14/18 kn):</b> Gelernt wird an den Messungen Darßer Ort und Barth. Für den Bodden wird Barth vorher in Wind auf dem Wasser umgerechnet:
         Barth × Wasserfaktor je Jahreszeit und Uhrzeit. Den Grundwert dieses Faktors liefern die Satellitenbilder (Bodden im Verhältnis zur Ostsee), den Tagesgang die beiden Stationen.
         „14 kn am Bodden“ heißt deshalb 14 kn auf dem Wasser, nicht in Barth. Unterschiede zwischen den Bodden-Spots, etwa Saal gegenüber Pruchten, stecken in den Prozentzahlen nur über das Richtungsfenster des Spots, nicht über eigene Faktoren.</li>
       <li><b>Ensemble (ab Tag 3 am Bodden, ab Tag 5 an der Ostsee, Woche 2):</b> Jeder Ensemble-Lauf wird am Bodden mit demselben Wasserfaktor umgerechnet, bevor gezählt wird, wie viele Läufe über der Schwelle liegen.</li>
       <li><b>Windanimation auf der Karte:</b> Das ICON-Feld wird über dem Wasser je Gitterpunkt und Windrichtung mit dem Verhältnis Satellit zu ICON korrigiert, danach mit dem lokalen Windstärke-Modell verschoben.</li>
-      <li><b>Jetzt-korr. (noch ohne Satellit):</b> Jetzt-korr. nimmt ICON am Spot und addiert den aktuellen Messfehler an der Station, also Messung minus ICON an der Station. Der Fehler klingt am Darßer Ort über etwa 20 Stunden ab, in Barth über etwa 3 Stunden.
-        Die Satellitenfaktoren stecken darin nicht. Das macht sich vor allem <b>bei Ostwind an der Ostsee</b> bemerkbar: Der Darßer Ort misst dann rund 40–50 % zu wenig.
-        Jetzt-korr. hält ICON für zu windig und zieht die Werte für Prerow und Zingst zu stark herunter. Bei West und Südwest passt es gut.</li>
+      <li><b>Jetzt-korr.:</b> Wind am Spot jetzt = aktuelle Messung an der Station × Satellitenfaktor des Spots für die gemessene Windrichtung (Tabelle „Je Windrichtung“).
+        Am Bodden kommt der Tagesgang dazu: Die Bilder entstehen morgens und abends, mittags gleichen sich Land und Wasser an, deshalb wird der Faktor mittags kleiner.
+        Die Abweichung zu ICON am Spot klingt danach ab, an der Ostsee über etwa 20 Stunden, am Bodden über etwa 3 Stunden.
+        Bei Ostwind an der Ostsee macht das den größten Unterschied: Der Darßer Ort misst dann 40–50 % zu wenig, Jetzt-korr. rechnet das jetzt heraus.
+        Mit der Maus über „Jetzt-korr.“ in der Tagesansicht steht die Rechnung, zum Beispiel „12 kn × 1,44 = 17 kn“.</li>
     </ul>`);
 }
 
@@ -171,6 +173,24 @@ function drawWaveIntro() {
       <li><b>Häufigkeit:</b> gezählt an den Messungen Darßer Ort seit 2021 und mit dem Satellitenfaktor je Richtung auf den Strand umgerechnet. Bei Ostwind wären es am Darßer Ort gemessen sonst viel zu wenige Tage.</li>
     </ul>`);
 }
+
+/* ---------- Beispielbilder (training/sat_example.py) ---------- */
+function drawSatExamples(list) {
+  const n = v => v.toFixed(1).replace(".", ",").replace(",0", ""), f = v => v.toFixed(2).replace(".", ",");
+  put("#satExamples", list.map(e => {
+    const sp = Object.entries(e.spots);
+    const ost = sp.filter(([k]) => OST.includes(k)), bod = sp.filter(([k]) => BOD.includes(k));
+    const line = (arr, st, meas) => arr.map(([k, v]) => `${v.name} ${n(v.kn)} kn = ${n(meas)} × ${f(v.faktor)}`).join(", ");
+    return `<figure class="satex"><img src="${e.bild}" alt="Satellitenbild ${e.zeit}, Wind aus ${e.richtung}: Messung Darßer Ort ${n(e.darss)} kn, Barth ${n(e.barth)} kn, Satellitenwind an den Spots" loading="lazy">
+      <figcaption><b>Wind aus ${e.richtung}, ${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}.${e.zeit.slice(0, 4)} ${e.zeit.slice(11)} Uhr.</b>
+      Quadrate: Messung an der Station. Kreise: Satellitenwind auf dem Wasser am Spot, dahinter der Faktor zur Station.
+      Ostsee zum Darßer Ort (${n(e.darss)} kn): ${line(ost, "darss", e.darss)}. Bodden zu Barth (${n(e.barth)} kn): ${line(bod, "barth", e.barth)}.
+      ${e.windfeld ? "Farbe der Wasserfläche: Windfeld dieses Überflugs." : "Ohne Windfeld im Hintergrund, die Einzelbilder liegen nur lokal vor."}</figcaption></figure>`;
+  }).join("") + `<p class="hint">Jetzt-korr. rechnet genauso, nur mit dem mittleren Faktor aus allen Bildern dieser Windrichtung statt mit dem Faktor eines einzelnen Bildes.
+    Beispiel Ostwind: Darßer Ort misst 10 kn, Faktor für Prerow bei O im Mittel ${SAT ? f(SAT.spots.prerow.darss.richtung.O.median) : "1,44"} – Jetzt-korr. zeigt für Prerow dann
+    ${SAT ? n(10 * SAT.spots.prerow.darss.richtung.O.median) : "14"} kn statt der 10 kn, die ICON plus Messfehler am Darßer Ort ergäbe.</p>`);
+}
+fetch("sat_beispiele.json").then(r => r.json()).then(drawSatExamples).catch(() => { $("#satExamples").innerHTML = "<p class=\"hint\">Noch keine Beispielbilder (python training/sat_example.py).</p>"; });
 
 /* ---------- Laden ---------- */
 function segToggle(id, cb) {

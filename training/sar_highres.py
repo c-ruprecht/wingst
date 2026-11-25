@@ -10,7 +10,7 @@ Schritte (lokal ausführen, im conda-Env mit `python`):
   # 1. Konto: https://dataspace.copernicus.eu  (dasselbe wie für Copernicus Browser, kostenlos)
   # 2. OAuth-Client anlegen: https://shapps.dataspace.copernicus.eu/dashboard/  → User settings → OAuth clients
   export CDSE_CLIENT_ID=...  CDSE_CLIENT_SECRET=...
-  python sar_highres.py download --start 2024-01-01 --end 2025-12-31   # lädt VV + Einfallswinkel je Überflug (kleine GeoTIFFs)
+  python sar_highres.py download --start 2024-01-01            # bis heute (--end JJJJ-MM-TT)   # lädt VV + Einfallswinkel je Überflug (kleine GeoTIFFs)
   python sar_highres.py wind                                           # rechnet Wind (braucht data/dwd mit Barth/Darßer Ort)
   python sar_highres.py spots                                          # Faktoren je Spot gegen die Stationen
 Ergebnis: data/sar300/raw/*.tif, data/sar300/wind/*.npz, results/sar300_spot_factors.csv, results/sar300_mean_ratio.png
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("step", choices=["download", "wind", "spots"])
     ap.add_argument("--start", default="2024-01-01")
-    ap.add_argument("--end", default="2025-12-31")
+    ap.add_argument("--end", default=pd.Timestamp.today().strftime("%Y-%m-%d"))   # bis heute; vorhandene Bilder werden übersprungen
     ap.add_argument("--dwd", default="data/dwd")
     a = ap.parse_args()
     if a.step == "download":

@@ -1,6 +1,6 @@
 /* Service Worker: App offline verfügbar, Kartenkacheln zwischenspeichern, Daten immer frisch versuchen. */
-const VERSION = "wingst-v33";
-const SHELL = ["./", "index.html", "style.css", "app.js", "spots.js", "model.js", "ensemble.js", "analyse.html", "analyse.js", "analyse-sat.js", "satellit.json", "welle.json", "charts.js", "analyse.json", "modelle.html", "spotguide.html", "spotguide.js", "spotinfo.js", "spot_directions.json", "depth.geojson", "depth.js", "windanim.js", "model/manifest.json", "manifest.webmanifest",
+const VERSION = "wingst-v34";
+const SHELL = ["./", "index.html", "style.css", "app.js", "spots.js", "model.js", "ensemble.js", "analyse.html", "analyse.js", "analyse-sat.js", "satellit.json", "welle.json", "sat_beispiele.json", "img/sat_beispiel_ost.png", "img/sat_beispiel_west.png", "charts.js", "analyse.json", "modelle.html", "spotguide.html", "spotguide.js", "spotinfo.js", "spot_directions.json", "depth.geojson", "depth.js", "windanim.js", "model/manifest.json", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png"];
 const TILE_HOSTS = ["tiles.openfreemap.org", "tiles.maps.eox.at", "unpkg.com", "fonts.gstatic.com", "fonts.googleapis.com"];
 const MAX_TILES = 1500;

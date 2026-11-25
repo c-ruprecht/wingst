@@ -338,3 +338,6 @@ svg.chart.dirs .petal { fill: #0b6e8a; }
 
 .an [data-tab][hidden] { display: none !important; }
 .wavetab .nw, .wavetab td:nth-child(3) { white-space: nowrap; }
+.satex { margin: 0 0 16px; }
+.satex img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); display: block; }
+.satex figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.45; }

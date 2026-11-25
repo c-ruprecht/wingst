@@ -43,9 +43,14 @@ for f in sorted(glob.glob(f"{SAR}/wind/*.npz")):
         u = np.nanmean([-mm[f"{m}_ws"] * np.sin(np.radians(mm[f"{m}_wd"])) for m in ("icon", "gfs", "ecmwf")])
         vv = np.nanmean([-mm[f"{m}_ws"] * np.cos(np.radians(mm[f"{m}_wd"])) for m in ("icon", "gfs", "ecmwf")])
         rows.append(dict(time=t, spot=k, sar=np.median(vals), icon=mm.icon_ws, gfs=mm.gfs_ws, ecmwf=mm.ecmwf_ws,
-                         mean3=np.nanmean([mm.icon_ws, mm.gfs_ws, mm.ecmwf_ws]), dir=(np.degrees(np.arctan2(-u, -vv)) + 360) % 360,
+                         mean3=np.nanmean([mm.icon_ws, mm.gfs_ws, mm.ecmwf_ws]),
+                         # Richtung aus dem Modellmittel; ohne frühere Läufe die Richtung, mit der das Bild gerechnet wurde
+                         dir=(np.degrees(np.arctan2(-u, -vv)) + 360) % 360 if np.isfinite(u) and np.isfinite(vv) else float(z["dir"]),
                          barth=float(z["barth_kn"]), darss=float(z["darss_kn"])))
-d = pd.DataFrame(rows).dropna(subset=["mean3"])
+# Bilder ohne frühere Modellläufe bleiben für den Vergleich mit den Stationen drin (Faktoren zu den Modellen
+# unten nutzen nur Zeilen mit Modellwerten)
+d = pd.DataFrame(rows).dropna(subset=["sar"])
+d = d[d.mean3.notna() | d.darss.notna() | d.barth.notna()]
 d.to_csv("../results/sar300_spot_samples.csv", index=False)
 d["sek"] = d.dir.map(lambda x: SEC[int(((x + 22.5) % 360) // 45)])
 out = []

@@ -1,0 +1,86 @@
+[
+ {
+  "id": "ost",
+  "bild": "img/sat_beispiel_ost.png",
+  "zeit": "2025-12-23 07:00",
+  "richtung": "O",
+  "grad": 88,
+  "darss": 10.1,
+  "barth": 6.0,
+  "spots": {
+   "prerow": {
+    "name": "Prerow",
+    "kn": 15.9,
+    "station": "darss",
+    "faktor": 1.57
+   },
+   "zingst": {
+    "name": "Zingst",
+    "kn": 12.8,
+    "station": "darss",
+    "faktor": 1.27
+   },
+   "born": {
+    "name": "Born",
+    "kn": 9.5,
+    "station": "barth",
+    "faktor": 1.58
+   },
+   "saal": {
+    "name": "Saal",
+    "kn": 6.8,
+    "station": "barth",
+    "faktor": 1.13
+   },
+   "pruchten": {
+    "name": "Pruchten",
+    "kn": 8.6,
+    "station": "barth",
+    "faktor": 1.42
+   }
+  },
+  "windfeld": false
+ },
+ {
+  "id": "west",
+  "bild": "img/sat_beispiel_west.png",
+  "zeit": "2024-01-27 07:00",
+  "richtung": "W",
+  "grad": 289,
+  "darss": 19.5,
+  "barth": 14.2,
+  "spots": {
+   "prerow": {
+    "name": "Prerow",
+    "kn": 20.0,
+    "station": "darss",
+    "faktor": 1.03
+   },
+   "zingst": {
+    "name": "Zingst",
+    "kn": 21.0,
+    "station": "darss",
+    "faktor": 1.08
+   },
+   "born": {
+    "name": "Born",
+    "kn": 19.1,
+    "station": "barth",
+    "faktor": 1.34
+   },
+   "saal": {
+    "name": "Saal",
+    "kn": 20.0,
+    "station": "barth",
+    "faktor": 1.41
+   },
+   "pruchten": {
+    "name": "Pruchten",
+    "kn": 19.1,
+    "station": "barth",
+    "faktor": 1.34
+   }
+  },
+  "windfeld": false
+ }
+]

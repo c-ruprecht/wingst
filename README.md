@@ -33,6 +33,7 @@ python forward.py ../data ../data/dwd ../results
 python satellite.py ../data/sentinel1 ../data/dwd ../results
 python train_7day.py ../data ../data/dwd ../results ../models   # braucht data/openmeteo_prev
 python train_speed.py ../data ../data/dwd ../results ../models  # Windstärke in kn (für die Windanimation), vor export_app_models.py
+python sat_example.py           # Beispielbilder Ost-/Westwind mit Messungen -> app/img/sat_beispiel_*.png
 python sat_station_analysis.py   # Satellit im Verhältnis zu Darßer Ort / Barth -> app/satellit.json (Windanalyse → Satellit)
 python ostsee_waves.py           # Welle/Downwind je Richtung an Prerow und Zingst -> app/welle.json (pip install global-land-mask)
 python sar_grid_factors.py   # Satellitenfaktoren je Gitterpunkt/Richtung für die Windanimation -> app/model/wind_grid.json
@@ -40,6 +41,16 @@ python netatmo_wind.py --find --history --check   # private Netatmo-Windmesser a
 python import_uba_zingst.py <UBA-Lieferung.zip>   # UBA Zingst 2016–25 -> data/uba, Vergleich -> results/uba_zingst_vergleich.csv
 curl -L -o ../data/depth/Elevation-Bathymetry.zip https://gdi.bsh.de/de/data/Elevation-Bathymetry.zip
 python depth_layer.py                        # Tiefenebene der App -> app/depth.geojson
+```
+
+## Satellit aktualisieren (neue Überflüge, z. B. 2026)
+
+```
+python training/sar_highres.py download        # neue Bilder bis heute, vorhandene werden übersprungen
+python training/sar_highres.py wind
+cd training && python sar_spot_model.py ../data/sar300 ../data/openmeteo_prev && python water_factor.py && cd ..
+python training/sat_station_analysis.py && python training/ostsee_waves.py && python training/sat_example.py
+python training/sar_grid_factors.py
 ```
 
 ## Stand (Nov 2026)

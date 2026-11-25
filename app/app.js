@@ -239,6 +239,35 @@ function computeLocal() {
 }
 
 /* ---------- Nowcast: aktueller Messfehler von ICON, klingt über einige Stunden ab ---------- */
+/* Satellitenfaktoren Spot / Station je Windrichtung (satellit.json, training/sat_station_analysis.py) und
+   Wasserfaktor Barth je Saison und Stunde (model/water_factor.json) – für Jetzt-korr. */
+let SAT_FACTORS = null, WATER_FACTOR = null;
+const SEC8 = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
+function satFactor(sp, dir) {
+  const o = SAT_FACTORS && SAT_FACTORS.spots[sp.id] && SAT_FACTORS.spots[sp.id][sp.ref];
+  if (!o) return null;
+  const c = dir != null ? o.richtung[SEC8[Math.floor(((dir + 22.5) % 360) / 45)]] : null;
+  return c && c.median != null ? { f: c.median, sec: SEC8[Math.floor(((dir + 22.5) % 360) / 45)] } : { f: o.gesamt.median, sec: null };
+}
+/* Die Satellitenbilder entstehen gegen 6–8 und 18–19 Uhr. Barth steht an Land: Mittags gleicht sich Land und Wasser
+   an (Wasserfaktor ~0,9 statt ~1,3). Deshalb Bodden-Faktor mit Wasserfaktor(Stunde) / Wasserfaktor(Überflugzeiten). */
+function diurnal(sp, key) {
+  if (sp.ref !== "barth" || !WATER_FACTOR) return 1;
+  const s = [0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0][Number(key.slice(5, 7)) - 1], row = WATER_FACTOR.barth[s];
+  const over = [6, 7, 8, 18, 19].reduce((a, h) => a + row[h], 0) / 5;
+  return row[Number(key.slice(11, 13))] / over;
+}
+
+function nowTitle(sp, nc) {
+  const st = STATIONS.find(s => s.id === sp.ref).name, n = v => v.toFixed(1).replace(".", ",");
+  if (nc.est != null) return `Gemessen ${st} ${n(nc.measured)} kn × Satellitenfaktor ${nc.factor.toFixed(2).replace(".", ",")}${nc.sec ? ` (Wind aus ${nc.sec})` : ""} = ${n(nc.est)} kn am Spot. `
+    + `Abweichung zu ICON am Spot ${nc.err > 0 ? "+" : ""}${n(nc.err)} kn, klingt über die nächsten Stunden ab.`;
+  return `ICON plus aktueller Messfehler an ${st} (${nc.err > 0 ? "+" : ""}${n(nc.err)} kn), klingt ab.`;
+}
+
+/* Jetzt-korr.: Wind am Spot jetzt = Messung an der Station × Satellitenfaktor (Spot/Station, je Windrichtung),
+   am Bodden noch mit dem Tagesgang Land/Wasser. Die Abweichung zu ICON am Spot klingt dann wie bisher ab
+   (Darßer Ort ~20 h, Barth ~3 h). Ohne Satellitenfaktoren: alter Weg, ICON + Messfehler an der Station. */
 function nowcast(sp) {
   const fc = state.fc, o = state.obs[sp.ref];
   if (!fc || !fc.sites || !o || o.kn == null) return null;
@@ -246,18 +275,29 @@ function nowcast(sp) {
   const obsTime = new Date(o.time);
   if (Date.now() - obsTime > 3 * 3600e3) return null;          // Messung zu alt
   const key = obsTime.toLocaleString("sv-SE", { timeZone: "Europe/Berlin" }).slice(0, 13).replace(" ", "T") + ":00";
-  const k = S.time.indexOf(key);
-  if (k < 0 || S.icon.ws[k] == null) return null;
-  const err = o.kn * HEIGHT_FACTOR[sp.ref] - S.icon.ws[k];
-  const tau = NOWCAST_TAU[site];
-  const map = {};
   const spotIcon = fc.spots[sp.id].icon.ws;
+  const ks = fc.spots[sp.id].time.indexOf(key);
+  const measured = o.kn * HEIGHT_FACTOR[sp.ref];
+  const sf = satFactor(sp, o.dir);
+  let err, est = null, factor = null;
+  if (sf && ks >= 0 && spotIcon[ks] != null) {
+    factor = sf.f * diurnal(sp, key);
+    est = measured * factor;
+    err = est - spotIcon[ks];
+  } else {
+    const k = S.time.indexOf(key);
+    if (k < 0 || S.icon.ws[k] == null) return null;
+    err = measured - S.icon.ws[k];
+  }
+  const tau = NOWCAST_TAU[site];
+  const k0 = ks >= 0 ? ks : S.time.indexOf(key);
+  const map = {};
   fc.spots[sp.id].time.forEach((t, i) => {
-    const L = i - k;
+    const L = i - k0;
     if (L < 0 || t.slice(0, 10) !== key.slice(0, 10) || spotIcon[i] == null) return;   // nur heute
     map[t] = Math.max(0, spotIcon[i] + err * Math.exp(-L / tau));
   });
-  return { err, map, at: key };
+  return { err, map, at: key, est, factor, sec: sf ? sf.sec : null, measured };
 }
 
 /* ---------- Auswertung: Stunden am Stück ---------- */
@@ -320,7 +360,7 @@ function days(spotId) {
     }
     const hasNow = hours.some(h => h.now != null);
     const ens = E ? E.daily[date] : null;
-    return { date, hours, runs, local, pday, hasNow, nowErr: nc ? nc.err : null, ens, hasEns: !!E };
+    return { date, hours, runs, local, pday, hasNow, nowErr: nc ? nc.err : null, now: nc, ens, hasEns: !!E };
   });
 }
 
@@ -523,7 +563,7 @@ function drawDetail() {
           <tr class="drow"><th scope="row">Richtung</th>${cells(h => `<td class="${offCls(h).trim()}" title="${compass(h.dirMean)}">${h.dirMean != null ? arrow(h.dirMean) : ""}</td>`)}</tr>
           <tr class="mrow"><th scope="row" title="bestes Rohmodell für dieses Gebiet">${bmLabel} kn</th>${cells(h => {
             const x = h.models[bm]; return `<td class="${knCls(x.kn)}${offCls(h)}">${x.kn == null ? "–" : Math.round(x.kn)}</td>`; })}</tr>
-          ${d.hasNow ? `<tr class="mrow nrow"><th scope="row" title="ICON plus aktueller Messfehler (${d.nowErr > 0 ? "+" : ""}${d.nowErr.toFixed(1)} kn), klingt ab">Jetzt-korr.</th>${cells(h => `<td class="${h.now == null ? "kx" : knCls(h.now)}${offCls(h)}">${h.now == null ? "" : Math.round(h.now)}</td>`)}</tr>` : ""}
+          ${d.hasNow ? `<tr class="mrow nrow"><th scope="row" title="${nowTitle(sp, d.now)}">Jetzt-korr.</th>${cells(h => `<td class="${h.now == null ? "kx" : knCls(h.now)}${offCls(h)}">${h.now == null ? "" : Math.round(h.now)}</td>`)}</tr>` : ""}
           <tr class="grow2"><th scope="row">Böen</th>${cells(h => { const g = h.models.icon.gust ?? h.models.gfs.gust; return `<td>${g == null ? "" : Math.round(g)}</td>`; })}</tr>
           ${state.local || !loc ? pRow(t1) + pRow(t2) : ""}
           <tr class="wrow"><th scope="row">Wetter</th>${cells(h => `<td title="${h.cloud == null ? "" : Math.round(h.cloud) + " % Wolken"}">${h.precip > 0.2 ? "🌧" : cloudIcon(h.cloud)}</td>`)}</tr>
@@ -673,6 +713,8 @@ function init() {
   renderAll();
   fetchJSON("analyse.json").then(j => { CLIMATE = j.climate; drawLong(); }).catch(() => {});
   fetchJSON("model/water_factor.json").then(t => { WingstEns.setWater(t); state.ensCache = {}; renderAll(); }).catch(() => {});
+  fetchJSON("satellit.json").then(x => { SAT_FACTORS = x; renderAll(); }).catch(() => {});
+  fetchJSON("model/water_factor.json").then(x => { WATER_FACTOR = x; renderAll(); }).catch(() => {});
   fetchJSON("model/ens_calib.json").then(c => { WingstEns.setCalib(c); state.ensCache = {}; renderAll(); }).catch(() => {});
   fetchJSON("model/ens_bias.json").then(b => { state.ensBias = b; state.ensCache = {}; renderAll(); }).catch(e => console.warn("Ensemble-Korrektur", e));
   loadLocalModel()
