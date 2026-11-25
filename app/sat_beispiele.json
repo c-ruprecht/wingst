@@ -2,85 +2,91 @@
  {
   "id": "ost",
   "bild": "img/sat_beispiel_ost.png",
-  "zeit": "2025-12-23 07:00",
+  "zeit": "2026-01-22 07:00",
   "richtung": "O",
-  "grad": 88,
-  "darss": 10.1,
-  "barth": 6.0,
+  "grad": 85,
+  "darss": 12.2,
+  "barth": 7.4,
   "spots": {
    "prerow": {
     "name": "Prerow",
-    "kn": 15.9,
+    "kn": 18.7,
     "station": "darss",
-    "faktor": 1.57
+    "faktor": 1.53
    },
    "zingst": {
     "name": "Zingst",
-    "kn": 12.8,
+    "kn": 18.5,
     "station": "darss",
-    "faktor": 1.27
+    "faktor": 1.51
    },
    "born": {
     "name": "Born",
-    "kn": 9.5,
+    "kn": 1.6,
     "station": "barth",
-    "faktor": 1.58
+    "faktor": 0.21
    },
    "saal": {
     "name": "Saal",
-    "kn": 6.8,
+    "kn": 3.7,
     "station": "barth",
-    "faktor": 1.13
+    "faktor": 0.5
    },
    "pruchten": {
     "name": "Pruchten",
-    "kn": 8.6,
+    "kn": 1.9,
     "station": "barth",
-    "faktor": 1.42
+    "faktor": 0.26
    }
   },
-  "windfeld": false
+  "windfeld": true
  },
  {
   "id": "west",
   "bild": "img/sat_beispiel_west.png",
-  "zeit": "2024-01-27 07:00",
+  "zeit": "2025-10-11 19:00",
   "richtung": "W",
-  "grad": 289,
-  "darss": 19.5,
-  "barth": 14.2,
+  "grad": 287,
+  "darss": 17.4,
+  "barth": 10.3,
   "spots": {
    "prerow": {
     "name": "Prerow",
-    "kn": 20.0,
+    "kn": 13.4,
     "station": "darss",
-    "faktor": 1.03
+    "faktor": 0.77
    },
    "zingst": {
     "name": "Zingst",
-    "kn": 21.0,
+    "kn": 13.8,
     "station": "darss",
-    "faktor": 1.08
+    "faktor": 0.79
    },
    "born": {
     "name": "Born",
-    "kn": 19.1,
+    "kn": 14.6,
     "station": "barth",
-    "faktor": 1.34
+    "faktor": 1.42
    },
    "saal": {
     "name": "Saal",
-    "kn": 20.0,
+    "kn": 15.2,
     "station": "barth",
-    "faktor": 1.41
+    "faktor": 1.47
    },
    "pruchten": {
     "name": "Pruchten",
-    "kn": 19.1,
+    "kn": 12.2,
     "station": "barth",
-    "faktor": 1.34
+    "faktor": 1.19
+   },
+   "dabitz": {
+    "name": "Dabitz",
+    "kn": 9.1,
+    "station": "barth",
+    "faktor": 0.89
    }
   },
-  "windfeld": false
+  "windfeld": true
  }
 ]
