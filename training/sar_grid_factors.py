@@ -42,7 +42,7 @@ def _ctx():
 CTX = _ctx()
 
 
-def get(url, tries=6):
+def get(url, tries=8):
     for i in range(tries):
         try:
             with urllib.request.urlopen(url, timeout=180, context=CTX) as r:
@@ -50,14 +50,14 @@ def get(url, tries=6):
         except Exception as e:
             if "CERTIFICATE_VERIFY_FAILED" in str(e):
                 sys.exit("SSL-Zertifikate fehlen: im conda-Env mit python starten oder pip install certifi")
-            print(f"    {e} – neuer Versuch in {10 * (i + 1)} s"); time.sleep(10 * (i + 1))
-    sys.exit("Open-Meteo antwortet nicht")
+            wait = 60 * (i + 1) if "429" in str(e) else 10 * (i + 1)     # 429: Minuten-/Stundenkontingent abwarten
+            print(f"    {e} – neuer Versuch in {wait} s", flush=True); time.sleep(wait)
+    sys.exit("Open-Meteo-Kontingent erschöpft. Später einfach neu starten – fertige Monate sind gespeichert.")
 
 
-def icon_grid(times):
-    """ICON (historische Vorhersage) an allen Gitterpunkten für die Überflugstunden. Monatsweise zwischengespeichert."""
+def icon_grid(times, pts):
+    """ICON (historische Vorhersage) an den Gitterpunkten mit Wasser für die Überflugstunden. Monatsweise gespeichert."""
     os.makedirs(CACHE, exist_ok=True)
-    pts = [(la, lo) for la in LATS for lo in LONS]
     months = sorted({t.strftime("%Y-%m") for t in times})
     frames = []
     for mo in months:
@@ -109,7 +109,7 @@ def main():
         t = (t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")).round("h")
         imgs.append((t, z["v"] * 1.943844))
     print(f"{len(imgs)} Satellitenbilder, {len(near)} Gitterpunkte mit Wasser im Umkreis von {RADIUS_KM} km")
-    icon = icon_grid(sorted({t for t, _ in imgs}))
+    icon = icon_grid(sorted({t for t, _ in imgs}), [(LATS[i], LONS[j]) for (i, j) in sorted(near)])
 
     rows = []
     for t, v in imgs:
