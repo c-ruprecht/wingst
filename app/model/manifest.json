@@ -38,6 +38,7 @@
   "hour_cos",
   "doy_sin",
   "doy_cos",
+  "blh",
   "lead_day"
  ],
  "daily_features": {
