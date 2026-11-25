@@ -48,7 +48,7 @@ python depth_layer.py                        # Tiefenebene der App -> app/depth.
 ```
 python training/sar_highres.py download        # neue Bilder bis heute, vorhandene werden übersprungen
 python training/sar_highres.py wind
-cd training && python sar_spot_model.py ../data/sar300 ../data/openmeteo_prev && python water_factor.py && cd ..
+cd training && python sar_spot_model.py ../data/sar300 ../data/openmeteo_prev && python water_factor.py ../data/dwd ../results ../app/model && cd ..
 python training/sat_station_analysis.py && python training/ostsee_waves.py && python training/sat_example.py
 python training/sar_grid_factors.py
 ```
