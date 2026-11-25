@@ -37,3 +37,5 @@ dependencies:
   - requests>=2.31
   - tqdm>=4.66
   - pip
+  - pip:
+    - global-land-mask   # Land/Wasser-Maske für ostsee_waves.py

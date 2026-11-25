@@ -27,18 +27,23 @@
 </header>
 
 <main class="an">
-  <section class="panel prose">
+  <nav class="subnav" aria-label="Bereiche der Windanalyse" id="subnav">
+    <a href="#uebersicht" data-tab="uebersicht">Übersicht</a>
+    <a href="#satellit" data-tab="satellit">Satellit</a>
+    <a href="#welle" data-tab="welle">Welle Ostsee</a>
+  </nav>
+  <section class="panel prose" data-tab="uebersicht">
     <h2>Kurz gesagt</h2>
     <ul class="tips" id="summary"></ul>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-tab="uebersicht">
     <h2>Welchem Wert trauen?</h2>
     <p class="hint">Bester Wert je Vorlauf, geprüft an allen Tagen 2024 und 2025. Kitebar heißt: zwischen 7 und 19 Uhr mindestens 2 Stunden am Stück über 14 kn auf dem Wasser.</p>
     <div id="trust"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-tab="uebersicht">
     <div class="panel-head">
       <h2>Wie oft stimmt die Prozentzahl?</h2>
       <div class="thr-toggle" role="group" aria-label="Schwelle" id="relThr">
@@ -50,7 +55,7 @@
     <div id="rel"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-tab="uebersicht">
     <div class="panel-head">
       <h2>Modelle im Vergleich</h2>
       <div class="thr-toggle" role="group" aria-label="Schwelle" id="thrSel">
@@ -62,28 +67,73 @@
     <div id="charts"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel prose" data-tab="satellit">
+    <h2>Was die Satellitenbilder zeigen</h2>
+    <div id="satIntro"></div>
+  </section>
+
+  <section class="panel" data-tab="satellit">
+    <h2>Spots im Verhältnis zu den Live-Stationen</h2>
+    <p class="hint">Wind auf dem Wasser am Spot geteilt durch die Messung an der Station zur selben Stunde. 1,25 heißt: am Spot weht es 25 % mehr als die Station misst. Median über alle Überflüge mit mindestens 6 kn an der Station, in Klammern die mittlere Hälfte der Fälle.</p>
+    <div id="satStations"></div>
+  </section>
+
+  <section class="panel" data-tab="satellit">
+    <h2>Je Windrichtung</h2>
+    <div class="panel-head"><span></span>
+      <div class="thr-toggle" role="group" aria-label="Bezugsstation" id="satRef">
+        <button type="button" class="seg on" data-v="own">eigene Station</button>
+        <button type="button" class="seg" data-v="darss">Darßer Ort</button>
+        <button type="button" class="seg" data-v="barth">Barth</button>
+      </div>
+    </div>
+    <div id="satDirs"></div>
+  </section>
+
+  <section class="panel" data-tab="satellit">
     <h2>Wind auf dem Wasser</h2>
     <p class="hint">Aus 439 Radarbildern (Sentinel-1, 300 m) 2024–25: Wind auf dem Wasser am Spot geteilt durch das Mittel der drei Modelle.</p>
     <div id="spots"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-tab="satellit">
     <h2>Welche Richtung an welchem Spot?</h2>
     <p class="hint">Aus den Radarbildern: Lage zum Ufer, wie gleichmäßig der Wind auf dem Wasser war (Streuung im Umkreis von 1,5 km, Wind ab 8 kn) und geschätzte Welle bei 15 kn.</p>
     <div id="dirs"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-tab="satellit">
     <h2>Bester Spot je Windrichtung</h2>
     <p class="hint">Aus den Radarbildern (Sentinel-1, 300 m, 2024–25): Wo weht es bei welcher Richtung am stärksten und am gleichmäßigsten? Nur Spots, an denen der Wind auf-, schräg auf- oder sideshore kommt.</p>
     <div id="bestdir"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel prose" data-tab="satellit">
+    <h2>Wie die Satellitenbilder in die Vorhersage eingehen</h2>
+    <div id="satUse"></div>
+  </section>
+
+  <section class="panel" data-tab="uebersicht">
     <h2>Windklima Darßer Ort</h2>
     <p class="hint">Gemessen 2016–2025. Anteil kitebarer Tage je Monat und Herkunft des Windes ab 14 kn.</p>
     <div id="climate"></div>
+  </section>
+
+  <section class="panel prose" data-tab="welle">
+    <h2>Welle an der Ostsee</h2>
+    <div id="waveIntro"></div>
+  </section>
+
+  <section class="panel" data-tab="welle">
+    <div class="panel-head">
+      <h2>Downwind auf der Welle je Windrichtung</h2>
+      <div class="thr-toggle" role="group" aria-label="Spot" id="waveSpot">
+        <button type="button" class="seg on" data-v="prerow">Prerow</button>
+        <button type="button" class="seg" data-v="zingst">Zingst</button>
+      </div>
+    </div>
+    <div class="wave-grid"><div id="waveRose"></div><ul class="tips" id="waveBest"></ul></div>
+    <div id="waveTable"></div>
   </section>
 
   <section class="notes">
@@ -92,5 +142,6 @@
 </main>
 <script src="charts.js"></script>
 <script src="analyse.js"></script>
+<script src="analyse-sat.js"></script>
 </body>
 </html>

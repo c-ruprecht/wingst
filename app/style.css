@@ -320,3 +320,21 @@ svg.chart.dirs .petal { fill: #0b6e8a; }
   background: linear-gradient(90deg, rgb(59,111,209) 0%, rgb(47,163,224) 21%, rgb(54,195,192) 36%, rgb(242,211,59) 50%, rgb(245,130,44) 64%, rgb(224,54,42) 79%, rgb(163,22,95) 100%); }
 .wind-legend:has(.grad) { position: absolute; width: 170px; padding-top: 12px; display: flex; }
 .wind-legend small { font-size: 10px; }
+
+/* Windanalyse: Unterseiten */
+.subnav { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 12px; border-bottom: 1px solid var(--line); }
+.subnav a { padding: 8px 14px; color: var(--ink); text-decoration: none; font-size: 14px; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.subnav a.on { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
+.atab tr.grp th { background: transparent; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; padding-top: 12px; }
+.atab tr.sum th, .atab tr.sum td { font-weight: 600; border-bottom: 2px solid var(--line); }
+.atab.num-c td { text-align: center; }
+.atab.num-c td:nth-child(2) { text-align: left; }
+.wave-grid { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 16px; align-items: start; margin-bottom: 10px; }
+@media (max-width: 640px) { .wave-grid { grid-template-columns: 1fr; } }
+.rose { width: 100%; max-width: 300px; height: auto; }
+.rose-lab { font-size: 13px; font-weight: 600; fill: var(--muted); }
+.wavetab td small { color: var(--muted); font-size: 11px; }
+.wavetab td.q3, .wavetab td.q2, .wavetab td.q1 { min-width: 140px; }
+
+.an [data-tab][hidden] { display: none !important; }
+.wavetab .nw, .wavetab td:nth-child(3) { white-space: nowrap; }
