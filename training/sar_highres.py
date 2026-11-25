@@ -99,7 +99,7 @@ def read_obs(dwd_root, site):
     return pd.DataFrame({"kn": kn, "dir": wd.reindex(kn.index)})
 
 
-def wind(dwd_root):
+def wind(dwd_root, force=False):
     import rasterio
     from cmod5n import cmod5n_inverse
     sc = pd.read_csv(f"{OUT}/scenes.csv")
@@ -128,10 +128,14 @@ def wind(dwd_root):
     water = binary_erosion(water, iterations=1)
     np.save(f"{OUT}/water_mask.npy", water)
     print(f"Wassermaske: {water.sum()} Pixel à {RES} m")
+    done = new = 0
     for _, row in sc.iterrows():
         p = f"{OUT}/raw/{row.file}"
         if not os.path.exists(p):
             continue
+        if not force and os.path.exists(f"{OUT}/wind/{row.file[:-4]}.npz"):
+            done += 1; continue                            # schon gerechnet (--force rechnet alle neu)
+        new += 1
         t = pd.Timestamp(row.time).tz_convert("UTC").round("h")
         o = obs["barth"].reindex([t]).iloc[0]
         if pd.isna(o.dir):
@@ -150,7 +154,7 @@ def wind(dwd_root):
         v[ok] = cmod5n_inverse(vv[ok], phi, inc[ok])
         np.savez_compressed(f"{OUT}/wind/{row.file[:-4]}.npz", v=v.astype("float32"), dir=o.dir, barth_kn=obs["barth"].kn.get(t, np.nan),
                             darss_kn=obs["darss_ort"].kn.get(t, np.nan), time=str(t))
-    print("Wind gerechnet:", len(glob.glob(f"{OUT}/wind/*.npz")), "Bilder")
+    print(f"Wind gerechnet: {new} neue Bilder, {done} schon vorhanden, zusammen {len(glob.glob(f'{OUT}/wind/*.npz'))}")
 
 
 def pix(lat, lon, shape):
@@ -210,10 +214,11 @@ if __name__ == "__main__":
     ap.add_argument("--start", default="2024-01-01")
     ap.add_argument("--end", default=pd.Timestamp.today().strftime("%Y-%m-%d"))   # bis heute; vorhandene Bilder werden übersprungen
     ap.add_argument("--dwd", default="data/dwd")
+    ap.add_argument("--force", action="store_true", help="wind: alle Bilder neu rechnen, nicht nur neue")
     a = ap.parse_args()
     if a.step == "download":
         download(a.start, a.end)
     elif a.step == "wind":
-        wind(a.dwd)
+        wind(a.dwd, a.force)
     else:
         spots()
